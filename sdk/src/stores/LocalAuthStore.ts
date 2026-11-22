@@ -10,7 +10,7 @@ type StoredAuthData = { token?: string; record?: AuthRecord; model?: AuthRecord 
  * to runtime/memory if local storage is undefined (e.g. in node env).
  */
 export class LocalAuthStore extends BaseAuthStore {
-  private storageFallback: Record<string, unknown> = {};
+  private storageFallback: Record<string, StoredAuthData | string> = {};
   private storageKey: string;
 
   constructor(storageKey = "pocketbase_auth") {
@@ -94,7 +94,7 @@ export class LocalAuthStore extends BaseAuthStore {
    * Stores a new data in the browser's local storage
    * (or runtime/memory if local storage is undefined).
    */
-  private _storageSet(key: string, value: unknown) {
+  private _storageSet(key: string, value: StoredAuthData | string) {
     if (typeof window !== "undefined" && window?.localStorage) {
       // store in local storage
       let normalizedVal = value as string;

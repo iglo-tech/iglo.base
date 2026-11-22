@@ -180,6 +180,7 @@ async function backupRestore(e: RequestEvent): Promise<Error | undefined> {
 
   try {
     let exists = false;
+    // oxlint-disable-next-line quality/no-known-value-widening -- existsErr holds the value a catch clause received, and a thrown value can be any JS value
     let existsErr: unknown = null;
     try {
       exists = await fsys.exists(key);

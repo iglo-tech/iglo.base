@@ -27,6 +27,7 @@ import type { JSONMap } from "@/tools/types/json-map";
 export class GoJSONMap {
   constructor(public data: JSONMap<unknown> = {}) {}
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns a value the migration file set in the map: any JS type, read back unchanged
   get(key: string): unknown {
     return jsonMapGet(this.data, key) ?? null;
   }
@@ -57,10 +58,15 @@ export class GoJSONMap {
   }
 }
 
+// A Go struct's fields by name. Each holds a value of its field's Go type, so
+// no one value type describes them all.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a struct's fields hold values of every Go type, which no single value type describes
+export type StructFields = Record<string, unknown>;
+
 export class GoJSONArray {
   // the slice is holder[key]: a struct's field, or a value of its own (of)
   constructor(
-    private readonly holder: Record<string, unknown>,
+    private readonly holder: StructFields,
     private readonly key: string,
     readonly elem: GoType = anyType,
   ) {}

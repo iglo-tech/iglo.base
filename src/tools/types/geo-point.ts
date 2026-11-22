@@ -59,7 +59,7 @@ export class GeoPoint implements JSONMarshaler {
   }
 
   // AsMap returns a value suitable to be used in an API rule expression.
-  asMap(): { lon: number; lat: number } {
+  asMap() {
     return { lon: this.lon, lat: this.lat };
   }
 

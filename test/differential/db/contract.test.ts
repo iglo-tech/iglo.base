@@ -55,7 +55,7 @@ function snapshot(dataDir: string): Snapshot {
   return { files, schema, migrations };
 }
 
-function integrityCheck(path: string): unknown {
+function integrityCheck(path: string) {
   const conn = new Database(path);
   try {
     return conn.query("PRAGMA integrity_check").values();

@@ -872,14 +872,7 @@ export function date(
 }
 
 // the UTC calendar fields of an instant
-export function fieldsOf(t: Instant): {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  min: number;
-  sec: number;
-} {
+export function fieldsOf(t: Instant) {
   const days = Math.floor(t.sec / 86_400);
   const secOfDay = t.sec - days * 86_400;
   const [year, month, day] = civilFromDays(days);

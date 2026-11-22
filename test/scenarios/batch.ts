@@ -15,11 +15,12 @@ import { checks, recordHas, recordMissing } from "@test/scenarios/record-checks"
 import { clientsToken, superuserToken } from "@test/scenarios/record-crud";
 import type { PrepareContext, Suite } from "@test/scenarios/scenario";
 import { changeSettings } from "@test/scenarios/settings-prepare";
+import type { JsonObject } from "@test/support/json";
 
-function batchSettings(change: Record<string, unknown>): (ctx: PrepareContext) => void {
+function batchSettings(change: JsonObject): (ctx: PrepareContext) => void {
   return ({ dataDir }) => {
     changeSettings(dataDir, (settings) => {
-      Object.assign(settings["batch"] as Record<string, unknown>, change);
+      Object.assign(settings["batch"] as JsonObject, change);
     });
   };
 }

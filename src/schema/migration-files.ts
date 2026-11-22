@@ -30,6 +30,7 @@ export function schemaMigrationRecord(file: string): string {
   return schemaMigrationPrefix + file;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a JS migration's up(tx) may return any value; apply.ts checks the result for a promise at runtime
 export type MigrationUp = (tx: MigrationTx) => unknown;
 
 // the renames a migration declares: a field of a collection, and a collection.
@@ -132,7 +133,7 @@ async function importMigration(path: string): Promise<{ default?: unknown }> {
 // build, so a migration reads the files next to it with import.meta.dir. A
 // module that the migration imports from elsewhere is bundled with the same
 // values, so inside it they are still the migration's.
-function importMetaOf(path: string): Record<string, string> {
+function importMetaOf(path: string) {
   const absolute = resolve(path);
   const dir = dirname(absolute);
   return {
@@ -179,7 +180,7 @@ async function loadMigration(path: string, file: string): Promise<SchemaMigratio
       "the default export must be an object (export default { up(tx) { ... } } satisfies Migration)",
     );
   }
-  const members = exported as Record<string, unknown>;
+  const members = exported as { up?: unknown; renames?: unknown; renameCollections?: unknown };
   for (const key of Object.keys(members)) {
     if (key !== "up" && key !== "renames" && key !== "renameCollections") {
       throw shape(
@@ -216,6 +217,6 @@ async function loadMigration(path: string, file: string): Promise<SchemaMigratio
   };
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+function isPlainObject(value: unknown): value is object {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }

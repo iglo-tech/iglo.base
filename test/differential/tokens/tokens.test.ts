@@ -44,6 +44,7 @@
 //       valid on both.
 import { isInstance } from "@/tools/types/is-instance";
 
+import type { Json } from "@test/support/json";
 import { testLogger } from "@test/support/logger";
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -78,6 +79,7 @@ import { openDataDir } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
 import { copyDataDir } from "@test/scenarios/fixture";
+import type { JsonObject } from "@test/support/json";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { serveTest } from "@test/support/router";
@@ -159,7 +161,7 @@ function upstreamToken(name: string): string {
 interface Response_ {
   status: number;
   text: string;
-  json: unknown;
+  json: Json;
 }
 
 async function api(
@@ -184,21 +186,16 @@ async function api(
   }
   const res = await fetch(`${upstream.url}${path}`, init);
   const text = await res.text();
-  let json: unknown;
+  let json: Json;
   try {
-    json = text === "" ? null : (JSON.parse(text) as unknown);
+    json = text === "" ? null : (JSON.parse(text) as Json);
   } catch {
     json = null;
   }
   return { status: res.status, text, json };
 }
 
-async function ok(
-  method: string,
-  path: string,
-  body?: unknown,
-  auth = superToken,
-): Promise<unknown> {
+async function ok(method: string, path: string, body?: unknown, auth = superToken): Promise<Json> {
   const res = await api(method, path, body, auth);
   if (res.status !== 200 && res.status !== 204) {
     throw new Error(`${method} ${path}: ${res.status} ${res.text}`);
@@ -258,8 +255,8 @@ function claimsJSON(token: string): string {
   return new TextDecoder().decode(RawURLEncoding.decodeString(token.split(".")[1] as string));
 }
 
-function claimsOf(token: string): { [key: string]: unknown } {
-  return JSON.parse(claimsJSON(token)) as { [key: string]: unknown };
+function claimsOf(token: string): JsonObject {
+  return JSON.parse(claimsJSON(token)) as JsonObject;
 }
 
 // -------------------------------------------------------------------

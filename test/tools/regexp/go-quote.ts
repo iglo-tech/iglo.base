@@ -8,6 +8,7 @@ import { bytesToText } from "@/tools/types/go-json";
 
 const encoder = new TextEncoder();
 
+// oxlint-disable-next-line quality/no-known-value-widening -- looked up by an arbitrary input character (`e in simpleEscapes`), so the key type stays string
 const simpleEscapes: Record<string, number> = {
   a: 0x07,
   b: 0x08,

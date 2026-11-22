@@ -2,6 +2,8 @@
 // and the stored values, read through upstream's API before the first case,
 // sorted so that the same fixture always gives the same model.
 
+import type { JsonObject } from "@test/support/json";
+
 export interface FieldModel {
   name: string;
   type: string;
@@ -48,7 +50,7 @@ export interface ApiCollection {
   fields: Array<ApiField>;
 }
 
-function samplesOf(field: ApiField, records: Array<Record<string, unknown>>): Array<unknown> {
+function samplesOf(field: ApiField, records: Array<JsonObject>): Array<unknown> {
   const seen = new Map<string, unknown>();
   for (const record of records) {
     const value = record[field.name];
@@ -65,7 +67,7 @@ function samplesOf(field: ApiField, records: Array<Record<string, unknown>>): Ar
 
 export function buildModel(
   collections: Array<ApiCollection>,
-  records: Map<string, Array<Record<string, unknown>>>,
+  records: Map<string, Array<JsonObject>>,
 ): Model {
   const namesById = new Map(collections.map((c) => [c.id, c.name]));
   const model: Model = {

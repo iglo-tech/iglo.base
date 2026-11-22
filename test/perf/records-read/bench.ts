@@ -22,6 +22,7 @@ import { parseArgs } from "node:util";
 import { runUpstream } from "@test/differential/db/fixture";
 import { copyDataDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
+import type { Json } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 
 const { values } = parseArgs({
@@ -52,8 +53,8 @@ async function build(dataDir: string, root: string): Promise<void> {
   const server = await startUpstream({ dataDir });
   try {
     let token = "";
-    const api = async (method: string, path: string, body?: unknown): Promise<unknown> => {
-      const headers: Record<string, string> = { "content-type": "application/json" };
+    const api = async (method: string, path: string, body?: unknown): Promise<Json> => {
+      const headers: ApiHeaders = { "content-type": "application/json" };
       if (token) {
         headers.authorization = token;
       }
@@ -66,7 +67,7 @@ async function build(dataDir: string, root: string): Promise<void> {
       if (!res.ok) {
         throw new Error(`${method} ${path}: ${res.status} ${text}`);
       }
-      return text === "" ? null : JSON.parse(text);
+      return (text === "" ? null : JSON.parse(text)) as Json;
     };
     token = (
       (await api("POST", "/api/collections/_superusers/auth-with-password", {
@@ -140,6 +141,8 @@ async function build(dataDir: string, root: string): Promise<void> {
     await server.stop();
   }
 }
+
+type ApiHeaders = { "content-type": string; authorization?: string };
 
 interface Workload {
   name: string;

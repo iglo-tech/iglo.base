@@ -19,6 +19,7 @@ import type { RunningServer } from "@test/support/executable";
 import { runUpstream } from "@test/differential/db/fixture";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const hookTimeout = 180_000;
 const email = "migrations@example.test";
@@ -30,7 +31,7 @@ let schemaFile = "";
 let upstream: UpstreamServer | undefined;
 let upstreamToken = "";
 let upstreamMigrate: { exitCode: number; output: string } | undefined;
-let igloRecords: Array<Record<string, unknown>> = [];
+let igloRecords: Array<JsonObject> = [];
 
 // the schema file of the test: posts with a renamed field and a new field
 // that the migration fills
@@ -53,12 +54,12 @@ async function superuserToken(url: string): Promise<string> {
   return ((await res.json()) as { token: string }).token;
 }
 
-async function records(url: string, token: string): Promise<Array<Record<string, unknown>>> {
+async function records(url: string, token: string): Promise<Array<JsonObject>> {
   const res = await fetch(`${url}/api/collections/posts/records?perPage=500&sort=id`, {
     headers: { authorization: token },
   });
   expect(res.status).toBe(200);
-  return ((await res.json()) as { items: Array<Record<string, unknown>> }).items;
+  return ((await res.json()) as { items: Array<JsonObject> }).items;
 }
 
 beforeAll(async () => {
@@ -97,7 +98,7 @@ beforeAll(async () => {
 `,
   );
   const second = posts("author");
-  (second.fields as Record<string, unknown>).slug = { type: "text", required: true };
+  (second.fields as JsonObject).slug = { type: "text", required: true };
   writeFileSync(schemaFile, JSON.stringify({ collections: { posts: second } }));
   const applied = await startServer(["--schema", schemaFile], igloDir);
   const appliedToken = await superuserToken(applied.url);

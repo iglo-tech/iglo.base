@@ -45,7 +45,7 @@ class LineReader {
 
   // readSlice returns the next line and whether the read hit the end of input
   // (io.EOF in Go). At the end of input the line is empty.
-  readSlice(): { line: string; eof: boolean } {
+  readSlice() {
     if (this.pos >= this.text.length) {
       return { line: "", eof: true };
     }

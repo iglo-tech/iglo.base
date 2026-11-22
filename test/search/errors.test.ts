@@ -16,7 +16,7 @@ import { newSimpleFieldResolver } from "@/search/simple-field-resolver";
 
 const clock: Clock = { now: () => new Date(0) };
 
-function errorOf(fn: () => unknown): Error | undefined {
+function errorOf(fn: () => void): Error | undefined {
   try {
     fn();
   } catch (error) {

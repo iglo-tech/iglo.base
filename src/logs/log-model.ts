@@ -114,14 +114,23 @@ function decodeTruncated(text: string): JSONMap<unknown> {
 
 const numberPattern = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
 
+// a JSON value as json.Unmarshal stores it: null, bool, string, float64, []any, map[string]any
+type LogJSONValue =
+  | null
+  | boolean
+  | string
+  | number
+  | Array<LogJSONValue>
+  | { [key: string]: LogJSONValue };
+
 class TruncatedDecoder {
   private i = 0;
   private failed = false;
 
   constructor(private readonly s: string) {}
 
-  object(): JSONMap<unknown> {
-    const obj: JSONMap<unknown> = {};
+  object(): JSONMap<LogJSONValue> {
+    const obj: JSONMap<LogJSONValue> = {};
     this.i++; // {
     for (;;) {
       if (this.s[this.i] === ",") {
@@ -140,7 +149,7 @@ class TruncatedDecoder {
         this.failed = true;
         return obj;
       }
-      let value: unknown = null;
+      let value: LogJSONValue = null;
       if (this.s[this.i] === ":") {
         this.i++;
         value = this.value();
@@ -154,8 +163,8 @@ class TruncatedDecoder {
     }
   }
 
-  private array(): Array<unknown> {
-    const arr: Array<unknown> = [];
+  private array(): Array<LogJSONValue> {
+    const arr: Array<LogJSONValue> = [];
     this.i++; // [
     for (;;) {
       if (this.s[this.i] === ",") {
@@ -172,7 +181,7 @@ class TruncatedDecoder {
     }
   }
 
-  private value(): unknown {
+  private value(): LogJSONValue {
     const c = this.s[this.i];
     switch (c) {
       case undefined:
@@ -200,7 +209,7 @@ class TruncatedDecoder {
     return this.number();
   }
 
-  private literal(text: string, value: unknown): unknown {
+  private literal(text: string, value: LogJSONValue): LogJSONValue {
     if (!this.s.startsWith(text, this.i)) {
       this.failed = true;
       return null;
@@ -211,7 +220,7 @@ class TruncatedDecoder {
 
   // a number that ends with the input is complete, unless its fraction or
   // exponent has no digits yet
-  private number(): unknown {
+  private number(): LogJSONValue {
     numberPattern.lastIndex = this.i;
     const match = numberPattern.exec(this.s);
     const next = match ? this.s[this.i + match[0].length] : ".";

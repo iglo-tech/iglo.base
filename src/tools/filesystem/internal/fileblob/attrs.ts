@@ -17,6 +17,7 @@
 
 import { closeSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
 
+import type { GoMap } from "@/server/json-decode";
 import { textToBytes } from "@/tools/types/go-json";
 
 export const attrsExt = ".attrs";
@@ -188,7 +189,7 @@ export function unmarshalAttrs(data: Uint8Array): xattrs {
   }
 
   const xa = emptyAttrs();
-  const obj = raw as Record<string, unknown>;
+  const obj = raw as GoMap;
   const str = (name: string): string | undefined => {
     if (!Object.hasOwn(obj, name) || obj[name] === null) {
       return undefined;
@@ -211,7 +212,7 @@ export function unmarshalAttrs(data: Uint8Array): xattrs {
       throw new Error("json: cannot unmarshal into Go struct field xattrs.user.metadata");
     }
     xa.metadata = new Map();
-    for (const [k, v] of Object.entries(md as Record<string, unknown>)) {
+    for (const [k, v] of Object.entries(md as GoMap)) {
       if (v === null) {
         xa.metadata.set(k, "");
         continue;

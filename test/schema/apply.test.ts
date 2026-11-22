@@ -14,10 +14,9 @@ import { readSchema } from "@/schema/read";
 import type { SchemaDescription } from "@/schema/types";
 import { freePort, run, startServer, tempDir } from "@test/support/executable";
 import type { RunResult } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 
 const superuser = { email: "admin@apply.test", password: "1234567890" };
-
-type Json = Record<string, unknown>;
 
 interface Site {
   root: string;
@@ -67,14 +66,14 @@ function described(text: string): SchemaDescription {
 }
 
 // the file of the database now, to change it
-async function currentFile(site: Site): Promise<Json> {
+async function currentFile(site: Site): Promise<JsonObject> {
   const result = await run(["--dir", site.dataDir, "schema", "pull"]);
   expect(result.exitCode).toBe(0);
-  return JSON.parse(result.stdout) as Json;
+  return JSON.parse(result.stdout) as JsonObject;
 }
 
-function collectionsOf(file: Json): Record<string, Json> {
-  return file.collections as Record<string, Json>;
+function collectionsOf(file: JsonObject): Record<string, JsonObject> {
+  return file.collections as Record<string, JsonObject>;
 }
 
 // the serve command with the file, until it is stopped: the start succeeds
@@ -164,10 +163,12 @@ async function withServer<T>(
 }
 
 // the stored row of a collection, read back from data.db
-function storedCollection(site: Site, name: string): Json {
+function storedCollection(site: Site, name: string): JsonObject {
   const db = new Database(join(site.dataDir, "data.db"), { readonly: true });
   try {
-    const row = db.query("SELECT * FROM _collections WHERE name = ?").get(name) as Json | null;
+    const row = db
+      .query("SELECT * FROM _collections WHERE name = ?")
+      .get(name) as JsonObject | null;
     if (row === null) {
       throw new Error(`no stored collection ${name}`);
     }
@@ -195,7 +196,10 @@ function tableNames(site: Site): Array<string> {
 
 // the database's schema with a posts collection (title is required unless
 // the caller says otherwise)
-function withPosts(file: Json, title: Json = { type: "text", required: true, max: 120 }): Json {
+function withPosts(
+  file: JsonObject,
+  title: JsonObject = { type: "text", required: true, max: 120 },
+): JsonObject {
   const next = structuredClone(file);
   collectionsOf(next).posts = {
     type: "base",
@@ -224,12 +228,12 @@ describe("schema apply and schema plan", () => {
       query: "SELECT id, title FROM posts",
       rules: { list: "", view: "" },
     };
-    const users = collectionsOf(v1).users as Json;
-    (users.fields as Json).nickname = { type: "text", min: 2 };
-    delete (users.fields as Json).avatar;
+    const users = collectionsOf(v1).users as JsonObject;
+    (users.fields as JsonObject).nickname = { type: "text", min: 2 };
+    delete (users.fields as JsonObject).avatar;
     // the OAuth2 mapping of the removed field goes too, as the save unsets it
-    const oauth2 = (users.oauth2 ?? {}) as Json;
-    oauth2.mappedFields = { ...(oauth2.mappedFields as Json | undefined), avatarURL: "" };
+    const oauth2 = (users.oauth2 ?? {}) as JsonObject;
+    oauth2.mappedFields = { ...(oauth2.mappedFields as JsonObject | undefined), avatarURL: "" };
     users.oauth2 = oauth2;
     users.authAlert = { enabled: false };
     const v1File = writeFile(site, "v1.json", v1);
@@ -240,19 +244,19 @@ describe("schema apply and schema plan", () => {
 
     // v2: posts changes, tags goes, the view changes, users goes back to the default
     const v2 = structuredClone(v1);
-    const posts = collectionsOf(v2).posts as Json;
+    const posts = collectionsOf(v2).posts as JsonObject;
     posts.indexes = ["CREATE UNIQUE INDEX `idx_posts_slug` ON `posts` (`slug`)"];
     posts.rules = { list: "", view: "", create: "@request.auth.id != ''", update: null };
-    (posts.fields as Json).title = { type: "text", required: true, max: 200 };
-    delete (posts.fields as Json).body;
-    (posts.fields as Json).slug = { type: "text", pattern: "^[a-z-]+$" };
+    (posts.fields as JsonObject).title = { type: "text", required: true, max: 200 };
+    delete (posts.fields as JsonObject).body;
+    (posts.fields as JsonObject).slug = { type: "text", pattern: "^[a-z-]+$" };
     delete collectionsOf(v2).tags;
     collectionsOf(v2).post_titles = {
       type: "view",
       query: "SELECT id, title, slug FROM posts",
       rules: { list: "", view: "" },
     };
-    delete (collectionsOf(v2).users as Json).authAlert;
+    delete (collectionsOf(v2).users as JsonObject).authAlert;
     const v2File = writeFile(site, "v2.json", v2);
     const before = dataDB(site);
 
@@ -334,9 +338,9 @@ describe("schema apply and schema plan", () => {
 
     // the file drops the field and the index that names it
     const next = withPosts(await currentFile(site));
-    (collectionsOf(next).posts as Json).indexes = [];
-    delete ((collectionsOf(next).posts as Json).fields as Json).title;
-    ((collectionsOf(next).posts as Json).fields as Json).title2 = { type: "text" };
+    (collectionsOf(next).posts as JsonObject).indexes = [];
+    delete ((collectionsOf(next).posts as JsonObject).fields as JsonObject).title;
+    ((collectionsOf(next).posts as JsonObject).fields as JsonObject).title2 = { type: "text" };
     const v2 = writeFile(site, "v2.json", next);
     const backups = preSchemaBackups(site).length;
     const bytes = dataDB(site);
@@ -388,7 +392,7 @@ describe("schema apply and schema plan", () => {
     let file = await currentFile(site);
     for (const name of ["f1", "f2", "f3", "f4"]) {
       const next = structuredClone(file);
-      ((collectionsOf(next).users as Json).fields as Json)[name] = { type: "text" };
+      ((collectionsOf(next).users as JsonObject).fields as JsonObject)[name] = { type: "text" };
       file = next;
       await applyOK(site, writeFile(site, `${name}.json`, next));
     }
@@ -438,7 +442,7 @@ describe("schema apply and schema plan", () => {
     });
 
     const next = withPosts(await currentFile(site));
-    (collectionsOf(next).posts as Json).indexes = [
+    (collectionsOf(next).posts as JsonObject).indexes = [
       "CREATE UNIQUE INDEX `idx_posts_title` ON `posts` (`title`)",
     ];
     const v2 = writeFile(site, "v2.json", next);
@@ -463,12 +467,12 @@ describe("schema apply and schema plan", () => {
       });
       expect(patched.status).toBe(200);
     });
-    const stored = (): { secret: string; providers: string } => {
+    const stored = () => {
       const row = storedCollection(site, "users");
-      const options = JSON.parse(String(row.options)) as Json;
+      const options = JSON.parse(String(row.options)) as JsonObject;
       return {
-        secret: ((options.authToken as Json).secret as string) ?? "",
-        providers: JSON.stringify((options.oauth2 as Json).providers ?? null),
+        secret: ((options.authToken as JsonObject).secret as string) ?? "",
+        providers: JSON.stringify((options.oauth2 as JsonObject).providers ?? null),
       };
     };
     const secrets = stored();
@@ -478,8 +482,8 @@ describe("schema apply and schema plan", () => {
     // (a pulled file lists them, with references: see the OAuth2 tests), so the
     // stored providers and their secrets stay
     const next = await currentFile(site);
-    const users = collectionsOf(next).users as Json;
-    delete (users.oauth2 as Json).providers;
+    const users = collectionsOf(next).users as JsonObject;
+    delete (users.oauth2 as JsonObject).providers;
     users.authAlert = { enabled: false };
     await applyOK(site, writeFile(site, "v2.json", next));
     expect(stored().providers).toBe(secrets.providers);
@@ -526,7 +530,9 @@ describe("schema apply and schema plan", () => {
 
       // the file the restart reads wants one more field
       const wanted = structuredClone(schema);
-      ((collectionsOf(wanted).posts as Json).fields as Json).restored = { type: "text" };
+      ((collectionsOf(wanted).posts as JsonObject).fields as JsonObject).restored = {
+        type: "text",
+      };
       writeFileSync(path, JSON.stringify(wanted, null, 2));
 
       const restoring = await fetch(`${url}/api/backups/restore.zip/restore`, {
@@ -546,7 +552,9 @@ describe("schema apply and schema plan", () => {
       }
       expect(token).not.toBe("");
       const collection = await api(url, token, "GET", "/api/collections/posts");
-      const fields = ((collection.json as Json).fields as Array<Json>).map((f) => f.name);
+      const fields = ((collection.json as JsonObject).fields as Array<JsonObject>).map(
+        (f) => f.name,
+      );
       expect(fields).toContain("restored");
     } finally {
       shutdown.abort();
@@ -558,7 +566,7 @@ describe("schema apply and schema plan", () => {
   test("a field that changes type is removed and added again, so its values need the flag", async () => {
     const site = await createSite();
     const v1 = withPosts(await currentFile(site));
-    (collectionsOf(v1).posts as Json).fields = {
+    (collectionsOf(v1).posts as JsonObject).fields = {
       title: { type: "text", max: 120 },
       count: { type: "number" },
     };
@@ -573,7 +581,7 @@ describe("schema apply and schema plan", () => {
     });
 
     const v2 = structuredClone(v1);
-    ((collectionsOf(v2).posts as Json).fields as Json).count = { type: "text" };
+    ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).count = { type: "text" };
     const v2File = writeFile(site, "v2.json", v2);
 
     const planned = await plan(site, v2File);
@@ -598,7 +606,7 @@ describe("schema apply and schema plan", () => {
         post: { type: "relation", collection: "posts", maxSelect: 1 },
       },
     };
-    ((collectionsOf(v2).posts as Json).fields as Json).featured = {
+    ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).featured = {
       type: "relation",
       collection: "comments",
       maxSelect: 1,
@@ -614,7 +622,7 @@ describe("schema apply and schema plan", () => {
     await applyOK(site, v1);
 
     const renamed = withPosts(await currentFile(site));
-    (collectionsOf(renamed).posts as Json).indexes = [
+    (collectionsOf(renamed).posts as JsonObject).indexes = [
       "CREATE INDEX `title_lookup` ON `posts` (`title`)",
     ];
     const renamedFile = writeFile(site, "renamed.json", renamed);
@@ -656,7 +664,7 @@ describe("schema apply and schema plan", () => {
 
 // a cycle ccc ↔ ddd whose collections carry the settings the function gives
 // them; the next file removes both
-async function removeCycle(settings: (name: string) => Json): Promise<void> {
+async function removeCycle(settings: (name: string) => JsonObject): Promise<void> {
   const site = await createSite();
   const base = await currentFile(site);
   const v1 = structuredClone(base);
@@ -783,7 +791,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
     const v2 = structuredClone(v1);
     delete collectionsOf(v2).pv;
-    (collectionsOf(v2).posts as Json).fields = {
+    (collectionsOf(v2).posts as JsonObject).fields = {
       title: { type: "text", required: true, max: 120 },
     };
     const v2File = writeFile(site, "v2.json", v2);
@@ -810,7 +818,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
     const v2 = structuredClone(v1);
     delete collectionsOf(v2).ov;
-    ((collectionsOf(v2).posts as Json).fields as Json).extra = { type: "text" };
+    ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).extra = { type: "text" };
     const v2File = writeFile(site, "v2.json", v2);
     await applyOK(site, v2File);
     expect(tableNames(site)).toContain("iv");
@@ -876,7 +884,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
       (implied as string).replace(/INDEX\s+`[^`]*`/, "INDEX `my_email`"),
     ]) {
       const file = await currentFile(site);
-      (collectionsOf(file).users as Json).indexes = [statement];
+      (collectionsOf(file).users as JsonObject).indexes = [statement];
       const path = writeFile(site, "implied.json", file);
       const planned = await plan(site, path);
       expect(planned.exitCode).toBe(0);
@@ -890,7 +898,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
   test("empty values are not data: a removed field holding only empty values is removed without the flag", async () => {
     const site = await createSite();
-    const fields: Json = {
+    const fields: JsonObject = {
       title: { type: "text", max: 120 },
       n: { type: "number" },
       flag: { type: "bool" },
@@ -899,7 +907,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
       rel: { type: "relation", collection: "posts", maxSelect: 3 },
     };
     const v1 = withPosts(await currentFile(site));
-    (collectionsOf(v1).posts as Json).fields = fields;
+    (collectionsOf(v1).posts as JsonObject).fields = fields;
     const v1File = writeFile(site, "v1.json", v1);
     await applyOK(site, v1File);
     await withServer(site, ["--schema", v1File], async (url, token) => {
@@ -908,7 +916,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
         title: "x",
       });
       expect(created.status).toBe(200);
-      const record = created.json as Json;
+      const record = created.json as JsonObject;
       expect(record.n).toBe(0);
       expect(record.flag).toBe(false);
       expect(record.tags).toEqual([]);
@@ -918,7 +926,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
     const v2 = structuredClone(v1);
     for (const name of ["n", "flag", "tags", "files", "rel"]) {
-      delete ((collectionsOf(v2).posts as Json).fields as Json)[name];
+      delete ((collectionsOf(v2).posts as JsonObject).fields as JsonObject)[name];
     }
     const v2File = writeFile(site, "v2.json", v2);
     const planned = await plan(site, v2File);
@@ -930,7 +938,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
   test("the unset value of every field type is empty, so the fields go without the flag", async () => {
     const site = await createSite();
-    const fields: Json = {
+    const fields: JsonObject = {
       title: { type: "text", max: 120 },
       n: { type: "number" },
       flag: { type: "bool" },
@@ -947,7 +955,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
       geo: { type: "geoPoint" },
     };
     const v1 = withPosts(await currentFile(site));
-    (collectionsOf(v1).posts as Json).fields = fields;
+    (collectionsOf(v1).posts as JsonObject).fields = fields;
     const v1File = writeFile(site, "v1.json", v1);
     await applyOK(site, v1File);
     await withServer(site, ["--schema", v1File], async (url, token) => {
@@ -956,13 +964,13 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
         title: "x",
       });
       expect(created.status).toBe(200);
-      expect((created.json as Json).geo).toEqual({ lon: 0, lat: 0 });
+      expect((created.json as JsonObject).geo).toEqual({ lon: 0, lat: 0 });
     });
 
     const v2 = structuredClone(v1);
     for (const name of Object.keys(fields)) {
       if (name !== "title") {
-        delete ((collectionsOf(v2).posts as Json).fields as Json)[name];
+        delete ((collectionsOf(v2).posts as JsonObject).fields as JsonObject)[name];
       }
     }
     const v2File = writeFile(site, "v2.json", v2);
@@ -976,7 +984,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
   test("a geoPoint that holds a point is counted when the field is removed", async () => {
     const site = await createSite();
     const v1 = withPosts(await currentFile(site));
-    (collectionsOf(v1).posts as Json).fields = {
+    (collectionsOf(v1).posts as JsonObject).fields = {
       title: { type: "text", max: 120 },
       geo: { type: "geoPoint" },
     };
@@ -991,7 +999,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
     });
 
     const v2 = structuredClone(v1);
-    delete ((collectionsOf(v2).posts as Json).fields as Json).geo;
+    delete ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).geo;
     const planned = await plan(site, writeFile(site, "v2.json", v2));
     expect(planned.exitCode).toBe(1);
     expect(planned.stdout).toContain("posts.geo: 1 values would be deleted");
@@ -999,7 +1007,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
   test("the non-empty values of a removed field are counted: the plan lists them", async () => {
     const site = await createSite();
-    const fields: Json = {
+    const fields: JsonObject = {
       title: { type: "text", max: 120 },
       n: { type: "number" },
       flag: { type: "bool" },
@@ -1007,7 +1015,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
       files: { type: "file", maxSelect: 3 },
     };
     const v1 = withPosts(await currentFile(site));
-    (collectionsOf(v1).posts as Json).fields = fields;
+    (collectionsOf(v1).posts as JsonObject).fields = fields;
     const v1File = writeFile(site, "v1.json", v1);
     await applyOK(site, v1File);
     await withServer(site, ["--schema", v1File], async (url, token) => {
@@ -1019,10 +1027,10 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
     });
 
     const v2 = structuredClone(v1);
-    delete ((collectionsOf(v2).posts as Json).fields as Json).n;
-    delete ((collectionsOf(v2).posts as Json).fields as Json).flag;
-    delete ((collectionsOf(v2).posts as Json).fields as Json).tags;
-    delete ((collectionsOf(v2).posts as Json).fields as Json).files;
+    delete ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).n;
+    delete ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).flag;
+    delete ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).tags;
+    delete ((collectionsOf(v2).posts as JsonObject).fields as JsonObject).files;
     const planned = await plan(site, writeFile(site, "v2.json", v2));
     expect(planned.exitCode).toBe(1);
     expect(planned.stdout).toContain("posts.n: 1 values would be deleted");
@@ -1034,7 +1042,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
   test("lowering maxSelect to one counts the rows that hold more; a higher maximum is the record check's", async () => {
     const site = await createSite();
     const v1 = withPosts(await currentFile(site));
-    (collectionsOf(v1).posts as Json).fields = {
+    (collectionsOf(v1).posts as JsonObject).fields = {
       title: { type: "text", max: 120 },
       tags: { type: "select", values: ["a", "b", "c"], maxSelect: 3 },
     };
@@ -1050,9 +1058,9 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
         );
       }
     });
-    const withMax = (max: number): Json => {
+    const withMax = (max: number): JsonObject => {
       const next = structuredClone(v1);
-      ((collectionsOf(next).posts as Json).fields as Json).tags = {
+      ((collectionsOf(next).posts as JsonObject).fields as JsonObject).tags = {
         type: "select",
         values: ["a", "b", "c"],
         maxSelect: max,
@@ -1085,7 +1093,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
         "GET",
         "/api/collections/posts/records?filter=title='three'",
       );
-      const items = (listed.json as { items: Array<Json> }).items;
+      const items = (listed.json as { items: Array<JsonObject> }).items;
       expect(items[0]?.tags).toHaveLength(1);
     });
   });
@@ -1093,7 +1101,7 @@ describe("schema apply: names, restarts, removals, indexes and loss", () => {
 
 // docs holds a record with a stored file; notes holds a record whose body the
 // file removes, so the guard refuses the file (the migrations delete docs)
-function withDocsAndNotes(file: Json, notesFields: Json): Json {
+function withDocsAndNotes(file: JsonObject, notesFields: JsonObject): JsonObject {
   const next = structuredClone(file);
   collectionsOf(next).docs = {
     type: "base",

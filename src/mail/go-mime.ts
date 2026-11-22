@@ -504,6 +504,7 @@ export function quote(s: string): string {
   return out + '"';
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- a lookup by any rune code (quoteEscapes[r] ?? the hex form for the rest): an open table, not the literal key union
 const quoteEscapes: { [r: number]: string } = {
   0x07: String.raw`\a`,
   0x08: String.raw`\b`,

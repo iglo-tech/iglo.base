@@ -14,6 +14,7 @@ import { ErrInvalidRedirectStatusCode, ErrMissingFile, Event } from "@/server/ev
 import { ResponseWriter } from "@/server/router";
 import { pointerTo, structOf } from "@/server/unmarshal-request-data";
 import type { MapRef, StructType } from "@/server/unmarshal-request-data";
+import type { Json } from "@test/support/json";
 import { newTestRequest } from "@test/support/router";
 import type { TestRequest } from "@test/support/router";
 
@@ -155,8 +156,10 @@ describe("Set and Get", () => {
   });
 });
 
+type EventData = { a: number; b: number; c?: number };
+
 test("SetAll and GetAll", () => {
-  const data: Record<string, unknown> = { a: 123, b: 456 };
+  const data: EventData = { a: 123, b: 456 };
 
   const e = newEvent();
   e.setAll(data);
@@ -207,14 +210,14 @@ function testResponseWrite(
   });
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: Json): Json {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return value;
   }
   return Object.fromEntries(
     Object.keys(value)
       .toSorted()
-      .map((k) => [k, sortKeys((value as Record<string, unknown>)[k])]),
+      .map((k) => [k, sortKeys(value[k] as Json)]),
   );
 }
 
@@ -516,7 +519,7 @@ describe("BindBody", () => {
   const scenarios: Array<{
     contentType: string;
     body: string;
-    expectDst: Record<string, unknown>;
+    expectDst: typeof filledDst;
     expectError?: boolean;
   }> = [
     { contentType: "", body: jsonDst, expectDst: emptyDst, expectError: true },
@@ -556,7 +559,7 @@ describe("BindBody", () => {
         body: s.body,
       });
 
-      const dst: Record<string, unknown> = { ...emptyDst };
+      const dst = { ...emptyDst };
       const err = await e.bindBody(dst, testDstStruct);
 
       expect(err !== undefined).toBe(s.expectError ?? false);
@@ -571,7 +574,7 @@ describe("BindBody", () => {
       headers: { "content-type": "application/json" },
       body: `{"A":1,"_b_":2,"C":"x"}`,
     });
-    const dst: Record<string, unknown> = {};
+    const dst = {};
     expect(await e.bindBody(dst, testDstStruct)).toBeUndefined();
     expect(dst).toEqual({ A: 1, B: 2, C: "x" });
   });
@@ -637,7 +640,7 @@ describe("BindBody", () => {
           headers: { "content-type": "application/json" },
           body,
         });
-        const dst: Record<string, unknown> = {};
+        const dst = {};
         expect(await e.bindBody(dst, type)).toBeUndefined();
         expect(dst).toEqual(expected);
       });
@@ -665,7 +668,7 @@ describe("BindBody", () => {
       headers: { "content-type": "application/json" },
       body: "null",
     });
-    const dst: Record<string, unknown> = { ...filledDst };
+    const dst = { ...filledDst };
     expect(await e.bindBody(dst, testDstStruct)).toBeUndefined();
     expect(dst).toEqual(emptyDst);
   });
@@ -720,7 +723,7 @@ describe("BindBody", () => {
       headers: { "content-type": "text/xml" },
       body,
     });
-    const dst: Record<string, unknown> = { ...emptyDst };
+    const dst = { ...emptyDst };
     const err = await e.bindBody(dst, testDstStruct);
     return [err, dst.C];
   };
@@ -856,7 +859,7 @@ describe("BindBody", () => {
         headers: { "content-type": "text/xml" },
         body: `<root>${inner}</root>`,
       });
-      const dst: Record<string, unknown> = {};
+      const dst = {};
       return [await e.bindBody(dst, numbers), dst];
     };
 
@@ -917,7 +920,8 @@ describe("BindBody", () => {
       headers: { "content-type": "application/json" },
       body: concat(utf8(`{"c":"\u00e9\u{1f600}"}`), new Uint8Array([0xff])),
     });
-    const dst: Record<string, unknown> = {};
+    type StringDst = { C?: string };
+    const dst: StringDst = {};
     expect(await e.bindBody(dst, testDstStruct)).toBeUndefined();
     expect(dst.C).toBe("\u00e9\u{1f600}");
   });
@@ -939,7 +943,7 @@ describe("BindBody", () => {
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: queryDst,
     });
-    const dst: Record<string, unknown> = {};
+    const dst = {};
     expect(
       await e.bindBody(
         dst,

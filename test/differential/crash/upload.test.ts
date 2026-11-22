@@ -44,7 +44,7 @@ const bodySize = 4 * 1024 * 1024;
 const boundary = "----crashtestboundary";
 
 // the multipart request of a record with one large file
-function uploadRequest(): { head: string; body: Buffer } {
+function uploadRequest() {
   const file = Buffer.alloc(bodySize);
   for (let i = 0; i < file.length; i += 4) {
     file.writeUInt32LE((i * 2_654_435_761) >>> 0, i);

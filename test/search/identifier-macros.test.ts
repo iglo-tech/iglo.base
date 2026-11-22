@@ -14,7 +14,7 @@ test("IdentifierMacros", () => {
   const now = new Date(Date.UTC(2023, 1, 3, 4, 5, 6, 0));
   expect(fromDate(now)).toEqual({ sec: 1_675_397_106, nsec: 0 });
 
-  const testMacros = new Map<string, unknown>([
+  const testMacros = new Map<string, string | number>([
     ["@now", "2023-02-03 04:05:06.000Z"],
     ["@yesterday", "2023-02-02 04:05:06.000Z"],
     ["@tomorrow", "2023-02-04 04:05:06.000Z"],

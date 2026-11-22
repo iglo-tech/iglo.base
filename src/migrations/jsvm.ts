@@ -22,7 +22,7 @@ import type { BindConfig } from "@/migrations/binds";
 import { AppBinding } from "@/migrations/binds-app";
 import type { RunTxFunc } from "@/migrations/binds-app";
 import { throwResult } from "@/migrations/go-class";
-import type { Membrane } from "@/migrations/membrane";
+import type { Membrane, MigrationObject } from "@/migrations/membrane";
 import { addMigration } from "@/migrations/migrations-runner";
 import type { Migration, MigrationFunc } from "@/migrations/migrations-runner";
 
@@ -87,7 +87,7 @@ function filesContent(dirPath: string): Array<[string, string]> {
 }
 
 function runFile(config: JsvmConfig, file: string, content: string, list: Array<Migration>): void {
-  const sandbox: Record<string, unknown> = {};
+  const sandbox: MigrationObject = {};
   const context = vm.createContext(sandbox);
   const m = bindAll(sandbox, context, config);
 
@@ -147,6 +147,7 @@ function runMigrationFunc(fn: unknown, txApp: App, m: Membrane): void {
   const binding = new AppBinding(txApp, runTxFunc);
 
   try {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a migration file's function returns a value of any JS type, checked for an error or a promise
     const result = (fn as (app: unknown) => unknown)(m.toVm(binding));
 
     if (result === undefined || result === null) {
@@ -225,7 +226,7 @@ function firstFrame(stack: string, file: string): string | undefined {
 }
 
 // console (goja_nodejs util.Format); every method prints the same way
-function newConsole(config: JsvmConfig): Record<string, unknown> {
+function newConsole(config: JsvmConfig) {
   const write = (...args: Array<unknown>): void => {
     config.log(formatLog(args));
   };
@@ -272,13 +273,15 @@ function formatLog(args: Array<unknown>): string {
 function newRequire(
   config: JsvmConfig,
   context: vm.Context,
-  sandbox: Record<string, unknown>,
+  sandbox: MigrationObject,
   m: Membrane,
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns require: its result is a native module or a module's exports, a value of any JS type
 ): (name: string) => unknown {
   const cache = new Map<string, { exports: unknown }>();
 
   const invalidModule = (): Error => new m.vm.GoError("Invalid module");
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns a module's exports: any JS value that the module file sets
   const load = (filename: string): unknown => {
     const cached = cache.get(filename);
     if (cached !== undefined) {
@@ -300,7 +303,7 @@ function newRequire(
       `(function (exports, require, module, __filename, __dirname) {${text}\n})`,
       context,
       { filename },
-    ) as (...args: Array<unknown>) => unknown;
+    ) as (...args: Array<unknown>) => void;
     wrapper(
       moduleObject.exports,
       requireFrom(path.dirname(filename)),
@@ -314,6 +317,7 @@ function newRequire(
 
   const requireFrom =
     (dir: string) =>
+    // oxlint-disable-next-line quality/no-unknown-returns -- returns a native module or a module's exports: a value of any JS type
     (name: string): unknown => {
       const native = nativeModule(name, sandbox, m);
       if (native !== undefined) {
@@ -329,7 +333,8 @@ function newRequire(
   return requireFrom(config.cwd);
 }
 
-function nativeModule(name: string, sandbox: Record<string, unknown>, m: Membrane): unknown {
+// oxlint-disable-next-line quality/no-unknown-returns -- returns a sandbox global or a native module: a value of any JS type
+function nativeModule(name: string, sandbox: MigrationObject, m: Membrane): unknown {
   switch (name) {
     case "console":
       return sandbox.console;

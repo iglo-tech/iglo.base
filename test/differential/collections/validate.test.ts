@@ -51,6 +51,7 @@ import { setupCollections, validateCases } from "@test/differential/collections/
 import type { Ctx, ValidateCase } from "@test/differential/collections/validate-cases";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { Json, JsonObject } from "@test/support/json";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 60_000;
@@ -89,7 +90,7 @@ async function readCtx(): Promise<Ctx> {
   expect(res.status).toBe(200);
   const items = (
     JSON.parse(res.text) as {
-      items: Array<{ id: string; name: string; fields: Array<Record<string, unknown>> }>;
+      items: Array<{ id: string; name: string; fields: Array<JsonObject> }>;
     }
   ).items;
   const byName = new Map(items.map((c) => [c.name, c]));
@@ -189,14 +190,15 @@ function modelCollection(c: ValidateCase, body: string): Collection {
 
 // a JSON value with its object members sorted (Go's map order is random)
 function sortedJSON(text: string): string {
-  const sort = (v: unknown): unknown => {
+  const sort = (v: Json): Json => {
     if (Array.isArray(v)) {
       return v.map(sort);
     }
     if (typeof v === "object" && v !== null) {
-      const out: Record<string, unknown> = Object.create(null);
+      const out: JsonObject = Object.create(null);
       for (const key of Object.keys(v).toSorted()) {
-        out[key] = sort((v as Record<string, unknown>)[key]);
+        // a key of Object.keys is present: its value is Json, not undefined
+        out[key] = sort(v[key] as Json);
       }
       return out;
     }

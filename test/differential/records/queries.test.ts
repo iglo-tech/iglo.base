@@ -53,6 +53,7 @@ import { runUpstream } from "@test/differential/db/fixture";
 import { copyDataDir } from "@test/scenarios/fixture";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const superEmail = "queries@example.com";
 const superPassword = "1234567890";
@@ -134,7 +135,7 @@ async function ok(res: Promise<Response>): Promise<string> {
   return r.text;
 }
 
-async function createCollection(body: Record<string, unknown>): Promise<string> {
+async function createCollection(body: JsonObject): Promise<string> {
   const text = await ok(request("POST", "/api/collections", JSON.stringify(body)));
   return (JSON.parse(text) as { id: string }).id;
 }
@@ -260,7 +261,7 @@ describe("upstream", () => {
     for (const collection of [users, members]) {
       const created: Array<string> = [];
       for (const [i, email] of emails.entries()) {
-        const record: { [key: string]: unknown } = {
+        const record: JsonObject = {
           email,
           emailVisibility: i % 2 === 0,
           password: userPassword,
@@ -365,9 +366,7 @@ describe("upstream", () => {
       [view2, "d2", "f2"],
     ] as const) {
       for (const id of postIds) {
-        const body = JSON.parse(bodies.get(`${collection}/${id}`) as string) as {
-          [k: string]: unknown;
-        };
+        const body = JSON.parse(bodies.get(`${collection}/${id}`) as string) as JsonObject;
         const names: Array<[string, string]> = [];
         if (body[single] !== "") {
           names.push([single, body[single] as string]);

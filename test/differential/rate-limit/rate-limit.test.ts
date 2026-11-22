@@ -39,7 +39,7 @@ interface Reply {
 }
 
 async function send(baseURL: string, step: Step): Promise<Reply> {
-  const headers: Record<string, string> = { ...step.headers };
+  const headers = { ...step.headers };
   let body: string | undefined;
   if (step.body !== undefined) {
     headers["Content-Type"] ??= "application/json";

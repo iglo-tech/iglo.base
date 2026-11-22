@@ -17,9 +17,10 @@ function dateTimeString(t: Instant): string {
   return DateTime.fromInstant(t).string();
 }
 
-export const identifierMacros: ReadonlyMap<string, (now: Date) => unknown> = new Map<
+// A macro's value is a date string or a number (the field values of fieldsOf).
+export const identifierMacros: ReadonlyMap<string, (now: Date) => string | number> = new Map<
   string,
-  (now: Date) => unknown
+  (now: Date) => string | number
 >([
   ["@now", (now) => dateTimeString(fromDate(now))],
   ["@yesterday", (now) => DateTime.fromInstant(fromDate(now)).addDate(0, 0, -1).string()],

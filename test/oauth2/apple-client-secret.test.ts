@@ -7,6 +7,7 @@ import { createPublicKey, generateKeyPairSync, verify } from "node:crypto";
 
 import type { Clock } from "@/app/clock";
 import { signAppleClientSecret } from "@/oauth2/apple-client-secret";
+import type { JsonObject } from "@test/support/json";
 
 const pemKey = (): string =>
   generateKeyPairSync("ec", { namedCurve: "P-256" })
@@ -23,12 +24,14 @@ const form = (privateKey: string, duration: number) => ({
   duration,
 });
 
-function parts(secret: string): {
-  header: { [key: string]: unknown };
-  claims: { [key: string]: unknown };
+interface TokenParts {
+  header: JsonObject;
+  claims: JsonObject;
   raw: Array<string>;
   signature: Buffer;
-} {
+}
+
+function parts(secret: string): TokenParts {
   const [h = "", c = "", s = ""] = secret.split(".");
   return {
     header: JSON.parse(Buffer.from(h, "base64url").toString()),

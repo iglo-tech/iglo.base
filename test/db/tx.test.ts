@@ -129,6 +129,7 @@ describe("transactions", () => {
       )
       .execute();
 
+    // oxlint-disable-next-line quality/no-known-value-widening -- the onComplete callback receives an unknown error (txErr: unknown)
     let completedWith: unknown = "not called";
     expect(() =>
       runInTransaction(app, (txApp) => {
@@ -176,7 +177,7 @@ describe("transactions", () => {
       }),
     ).toThrow("transaction afterFunc errors: after");
 
-    let err: unknown = null;
+    let err = null;
     try {
       runInTransaction(app, (txApp) => {
         txApp.txInfo()!.onComplete(() => {

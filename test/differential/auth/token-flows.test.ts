@@ -26,9 +26,11 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { freePort, startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 // starting and stopping the servers is slow on some runners
 const timeout = 120_000;
@@ -46,15 +48,16 @@ interface Server {
   kind: Kind;
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  // the iglo.base process's RunResult, or nothing for upstream
+  stop(): Promise<RunResult | void>;
 }
 
 interface Reply {
   status: number;
-  json: { [key: string]: unknown };
+  json: JsonObject;
 }
 
-type Row = { [key: string]: unknown };
+type Row = JsonObject;
 
 type Confirm = (server: Server, token: string) => Promise<Reply>;
 
@@ -111,6 +114,8 @@ async function stop(server: Server): Promise<void> {
   await server.stop();
 }
 
+type JsonRequestHeaders = { "Content-Type": string; Authorization?: string };
+
 async function request(
   server: Server,
   method: string,
@@ -118,7 +123,7 @@ async function request(
   body: unknown,
   token?: string,
 ): Promise<Reply> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: JsonRequestHeaders = { "Content-Type": "application/json" };
   if (token !== undefined) {
     headers.Authorization = token;
   }
@@ -212,11 +217,9 @@ function mailedToken(raw: string): string {
   return match[0];
 }
 
-function claimsOf(token: string): { [key: string]: unknown } {
+function claimsOf(token: string): JsonObject {
   const payload = token.split(".")[1] as string;
-  const { exp, ...claims } = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
-    [key: string]: unknown;
-  };
+  const { exp, ...claims } = JSON.parse(Buffer.from(payload, "base64url").toString()) as JsonObject;
   expect(typeof exp).toBe("number");
   return claims;
 }
@@ -241,13 +244,13 @@ function normalizeMail(raw: string): string {
 // transcripts
 
 // generated values replaced, for comparing two servers' replies
-function shape(reply: Reply): unknown {
+function shape(reply: Reply) {
   // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
-  const json = JSON.parse(JSON.stringify(reply.json)) as { [key: string]: unknown };
+  const json = JSON.parse(JSON.stringify(reply.json)) as JsonObject;
   if (typeof json["token"] === "string") {
     json["token"] = "<token>";
   }
-  for (const item of [json, json["record"] as { [key: string]: unknown } | undefined]) {
+  for (const item of [json, json["record"] as JsonObject | undefined]) {
     if (item?.["updated"] !== undefined) {
       item["updated"] = "<updated>";
     }
@@ -262,10 +265,10 @@ function userRow(dataDir: string, id = userId): Row {
 
 // the row as it is now, with the secret and generated columns as whether
 // they changed since `before`, and the system rows that point to the record
-function stateSince(dataDir: string, before: Row): unknown {
+function stateSince(dataDir: string, before: Row) {
   const row = userRow(dataDir, before["id"] as string);
   const changed = (key: string): string => (row[key] === before[key] ? "same" : "changed");
-  const refs = (table: string, columns: string): unknown =>
+  const refs = (table: string, columns: string) =>
     queryRows(
       dataDir,
       `SELECT ${columns} FROM ${table} WHERE recordRef = ? ORDER BY ${columns}`,

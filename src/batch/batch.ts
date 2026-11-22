@@ -66,7 +66,7 @@ import { DefaultBodyLimitMiddlewareId } from "@/middlewares/middlewares";
 import { findRecordById } from "@/records/record-query";
 import { runSync } from "@/records/record-save";
 import { newInternalServerError, toApiError } from "@/server/error";
-import type { ApiError } from "@/server/error";
+import type { ApiError, SafeErrorData } from "@/server/error";
 import type { RouterGroup } from "@/server/group";
 import type { HandlerResult } from "@/server/handler";
 import { setOwn } from "@/server/json-decode";
@@ -100,11 +100,18 @@ export function bindBatchApi(_app: App, rg: RouterGroup<RequestEvent>): void {
   sub.POST("", batchTransaction).unbind(DefaultBodyLimitMiddlewareId); // the body limit is inlined
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+// a JSON value as the request's JSON gives it, and a JSON object (Go's map[string]any)
+type JsonValue = string | number | boolean | null | Array<JsonValue> | JsonObject;
+type JsonObject = { [key: string]: JsonValue };
+
+// the batch form as bindBody fills it
+type BatchForm = { Requests?: Array<JsonObject | null> };
+
+function isPlainObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const tags = (name: string): Record<string, string> => ({ form: name, json: name });
+const tags = (name: string) => ({ form: name, json: name });
 
 const internalRequestFields: Array<StructField> = [
   // map[string]any and map[string]string, checked by internalRequestOf
@@ -128,6 +135,7 @@ export class InternalRequest {
   readonly files = new Map<string, Array<File>>();
 
   constructor(
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the item's body is a Go map[string]any: the request's JSON, or (setItemBody) an OAuth2 record payload; both are passed to marshal and the record handlers as they are
     public body: Record<string, unknown>,
     readonly headers: Record<string, string>,
     readonly method: string,
@@ -144,7 +152,7 @@ export class InternalRequest {
 
 // the struct bound from JSON as InternalRequest, or an error for what its
 // map fields cannot hold
-function internalRequestOf(raw: Record<string, unknown>): InternalRequest {
+function internalRequestOf(raw: JsonObject): InternalRequest {
   const body = raw["Body"] ?? {};
   if (!isPlainObject(body)) {
     throw new Error("json: cannot unmarshal into Go map[string]any");
@@ -227,7 +235,7 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
   }
 
   // load base requests data
-  const form: Record<string, unknown> = {};
+  const form: BatchForm = {};
   const bindErr = await e.bindBody(form, batchRequestsFormType);
   if (bindErr) {
     return e.badRequestError("Failed to read the submitted batch data.", bindErr);
@@ -235,7 +243,7 @@ async function batchTransaction(e: RequestEvent): Promise<HandlerResult> {
 
   let requests: Array<InternalRequest | null>;
   try {
-    requests = ((form["Requests"] ?? []) as Array<Record<string, unknown> | null>).map((raw) =>
+    requests = (form["Requests"] ?? []).map((raw) =>
       raw === null ? null : internalRequestOf(raw),
     );
   } catch (error) {
@@ -534,6 +542,7 @@ export async function prepareItem(
 // Replaces the regular fields of a prepared item, for a body that is known
 // only inside the transaction (sendOAuth2RecordCreateRequest): the same
 // result as preparing the item with this body, without an await.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the body is a JSON object of arbitrary provider values when it is an OAuth2 record payload (record-auth-with-oauth2.ts), so it stays unknown-valued; it is stored in ir.body and marshaled as it is
 export function setItemBody(item: PreparedItem, body: Record<string, unknown>): void {
   const { ir, request, requestInfo } = item;
   if (request === null || requestInfo instanceof Error) {
@@ -593,6 +602,11 @@ class ItemResponseWriter extends ResponseWriter {
 interface BatchRequestResult {
   body: string;
   status: number;
+}
+
+// the value a handler's result is collected into (collectResult sets it)
+interface ItemOutcome {
+  value?: HandlerResult;
 }
 
 class BatchResults implements JSONMarshaler {
@@ -682,7 +696,7 @@ export function processInternalRequest(
 
   const event = newItemEvent(txApp, base, request, infoContext);
 
-  const out: { value?: HandlerResult } = {};
+  const out: ItemOutcome = {};
   runSync(collectResult(handler(event, wrapIO(txRecordIO(requestInfo, ir.files))), out));
   if (out.value instanceof Error) {
     return out.value;
@@ -740,7 +754,7 @@ export class BatchResponseError extends Error {
     return "batch_request_failed";
   }
 
-  resolve(errData: Record<string, unknown>): unknown {
+  resolve(errData: SafeErrorData): SafeErrorData {
     errData["response"] = this.err;
     return errData;
   }

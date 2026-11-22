@@ -14,6 +14,7 @@ import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { setLogsSettings } from "@test/scenarios/logs";
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const timeout = 60_000;
 
@@ -160,7 +161,7 @@ const requests: Array<Request> = [
 ];
 
 async function send(url: string, r: Request): Promise<void> {
-  const headers: Record<string, string> = { ...r.headers };
+  const headers = { ...r.headers };
   if (r.token) {
     headers.Authorization = r.token;
   }
@@ -207,7 +208,7 @@ function normalized(rows: Array<Row>): Array<string> {
     .toSorted();
 }
 
-function fixtureCopy(logs: Record<string, unknown>): string {
+function fixtureCopy(logs: JsonObject): string {
   const root = tempDir();
   roots.push(root);
   const dataDir = join(root, "pb_data");

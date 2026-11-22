@@ -42,6 +42,7 @@ const RENEW_REQUEST: RequestInit = {
 
 /** The timers the client uses. Injected by tests, which run without sleeping. */
 export interface BrowserTimers {
+  // oxlint-disable-next-line quality/no-unknown-returns -- keeps iglo's published SSR types stable: the handle is an opaque platform value (number in browsers, Timeout in Node) that the SDK only passes back to clearTimeout
   setTimeout: (callback: () => void, ms: number) => unknown;
   clearTimeout: (handle: unknown) => void;
 }
@@ -82,6 +83,7 @@ function networkError(url: string, err: unknown): ClientResponseError {
 
 /** The error for an answer that is not a success. */
 async function responseError(url: string, res: Response): Promise<ClientResponseError> {
+  // oxlint-disable-next-line quality/no-known-value-widening -- the response body is arbitrary JSON (any shape, or the {} placeholder when it is not JSON) and is passed through unchanged; unknown is the true type
   let data: unknown = {};
   try {
     data = await res.json();

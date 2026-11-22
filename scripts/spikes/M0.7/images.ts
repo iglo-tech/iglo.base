@@ -176,13 +176,13 @@ function encodeBmp(raw: Raw): Uint8Array {
 
 // sharp, loaded from the spike's own node_modules (generator only)
 interface SharpLike {
-  (input: Uint8Array, options?: Record<string, unknown>): SharpPipeline;
+  (input: Uint8Array, options?: Record<string, string | number | boolean>): SharpPipeline;
 }
 interface SharpPipeline {
-  jpeg(o?: Record<string, unknown>): SharpPipeline;
-  png(o?: Record<string, unknown>): SharpPipeline;
-  gif(o?: Record<string, unknown>): SharpPipeline;
-  tiff(o?: Record<string, unknown>): SharpPipeline;
+  jpeg(o?: Record<string, string | number | boolean>): SharpPipeline;
+  png(o?: Record<string, string | number | boolean>): SharpPipeline;
+  gif(o?: Record<string, string | number | boolean>): SharpPipeline;
+  tiff(o?: Record<string, string | number | boolean>): SharpPipeline;
   greyscale(): SharpPipeline;
   toColourspace(c: string): SharpPipeline;
   toBuffer(): Promise<Uint8Array>;

@@ -14,9 +14,11 @@ import { snapshot } from "@test/differential/backups/snapshot";
 import { eventually, superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { freePort, startServer, tempDir } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
 import type { Versitygw } from "@test/support/versitygw";
+import type { JsonObject } from "@test/support/json";
 
 const timeout = 120_000;
 
@@ -27,7 +29,7 @@ type Kind = "upstream" | "iglo";
 interface Server {
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 const roots: Array<string> = [];
@@ -57,7 +59,7 @@ interface S3Target {
   secret?: string;
 }
 
-function s3Settings(target: S3Target | null): Record<string, unknown> {
+function s3Settings(target: S3Target | null): JsonObject {
   return target === null
     ? { enabled: false }
     : {
@@ -127,7 +129,7 @@ async function call(
     auth?: boolean;
   } = {},
 ): Promise<Answer> {
-  const headers: Record<string, string> = { ...init.headers };
+  const headers = { ...init.headers };
   if (init.auth !== false) {
     Object.assign(headers, asSuperuser);
   }
@@ -243,9 +245,7 @@ afterAll(async () => {
 });
 
 // the same steps on both servers, each with its own bucket
-async function bothServers(
-  steps: (server: Server, s3: Versitygw) => Promise<unknown>,
-): Promise<void> {
+async function bothServers<T>(steps: (server: Server, s3: Versitygw) => Promise<T>): Promise<void> {
   const [gwUp, gwIg] = await Promise.all([startVersitygw(), startVersitygw()]);
   try {
     await useBackupsS3(upstream, gwUp);
@@ -259,7 +259,7 @@ async function bothServers(
   }
 }
 
-function listBody(a: Answer): { status: number; body: unknown } {
+function listBody(a: Answer) {
   const list = JSON.parse(a.body) as Array<{ key: string; size: number; modified: string }>;
   return {
     status: a.status,
@@ -457,6 +457,13 @@ interface Seen {
 
 type Script = (req: Request, url: URL) => Response | null | Promise<Response | null>;
 
+type RangeResponseHeaders = {
+  "Content-Type": string;
+  "Content-Length": string;
+  "Last-Modified": string;
+  "Content-Range"?: string;
+};
+
 class ScriptedS3 {
   readonly seen: Array<Seen> = [];
   script: Script = () => null;
@@ -546,7 +553,7 @@ class ScriptedS3 {
     const range = /bytes=(\d+)-(\d*)/.exec(req.headers.get("Range") ?? "");
     const first = Number(range?.[1] ?? 0);
     const end = range?.[2] ? Number(range[2]) + 1 : object.body.length;
-    const headers: Record<string, string> = {
+    const headers: RangeResponseHeaders = {
       "Content-Type": object.headers.get("Content-Type") ?? "",
       "Content-Length": String(end - first),
       "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
@@ -590,11 +597,11 @@ async function allEndpoints(server: Server, s3: ScriptedS3): Promise<Array<unkno
   return out;
 }
 
-async function bothAgainst(
+async function bothAgainst<T>(
   script: Script,
-  steps: (server: Server, s3: ScriptedS3) => Promise<unknown>,
+  steps: (server: Server, s3: ScriptedS3) => Promise<T>,
 ): Promise<void> {
-  const results: Array<unknown> = [];
+  const results: Array<T> = [];
   for (const server of [upstream, iglo]) {
     const s3 = new ScriptedS3();
     s3.script = script;

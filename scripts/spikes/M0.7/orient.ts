@@ -228,6 +228,7 @@ function pngConfig(b: Uint8Array): Size {
       }
       depth = t[8] as number;
       const colorType = t[9] as number;
+      // oxlint-disable-next-line quality/no-known-value-widening -- a lookup by PNG bit depth: the keys are the legal depths, and any other depth reads as undefined through the `?.` below, which an object type with literal keys cannot express without an assertion
       const valid: Record<number, Array<number>> = {
         1: [0, 3],
         2: [0, 3],

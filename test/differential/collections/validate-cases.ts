@@ -11,13 +11,19 @@
 // A body is a function of the current state (Ctx): collection ids and the
 // stored fields, read through upstream's GET before the case runs.
 
+import type { JsonObject } from "@test/support/json";
+
+// a request body: JSON.stringify sends it, and drops the properties that are
+// undefined (the case literals have optional undefined members)
+type Body = string | number | boolean | null | Array<Body> | { [key: string]: Body | undefined };
+
 export interface Ctx {
   // the id of a collection (by name)
   id(collection: string): string;
   // the stored fields of a collection, as upstream's GET returns them
-  fields(collection: string): Array<Record<string, unknown>>;
+  fields(collection: string): Array<JsonObject>;
   // one stored field (by name)
-  field(collection: string, field: string): Record<string, unknown>;
+  field(collection: string, field: string): JsonObject;
 }
 
 export interface Pending {
@@ -29,12 +35,12 @@ export interface ValidateCase {
   name: string;
   // PATCH /api/collections/{target}; POST /api/collections when unset
   target?: string;
-  body: (ctx: Ctx) => unknown;
+  body: (ctx: Ctx) => Body;
   valid: boolean;
   pending?: Pending;
 }
 
-export const setupCollections: Array<(ctx: Ctx) => unknown> = [
+export const setupCollections: Array<(ctx: Ctx) => Body> = [
   (ctx) => ({
     name: "posts",
     type: "base",
@@ -121,7 +127,7 @@ const providerNames = [
   "yandex",
 ];
 
-const provider = (name: string, extra: Record<string, unknown> = {}) => ({
+const provider = (name: string, extra: JsonObject = {}) => ({
   name,
   clientId: "client-" + name,
   clientSecret: "secret-" + name,
@@ -133,15 +139,12 @@ const withField = (
   ctx: Ctx,
   collection: string,
   field: string,
-  change: (f: Record<string, unknown>) => Record<string, unknown>,
-): Array<Record<string, unknown>> =>
+  change: (f: JsonObject) => JsonObject,
+): Array<JsonObject> =>
   ctx.fields(collection).map((f) => (f.name === field ? change({ ...f }) : f));
 
-const withoutField = (
-  ctx: Ctx,
-  collection: string,
-  field: string,
-): Array<Record<string, unknown>> => ctx.fields(collection).filter((f) => f.name !== field);
+const withoutField = (ctx: Ctx, collection: string, field: string): Array<JsonObject> =>
+  ctx.fields(collection).filter((f) => f.name !== field);
 
 export const validateCases: Array<ValidateCase> = [
   // -----------------------------------------------------------------

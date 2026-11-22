@@ -31,6 +31,7 @@ function token(id: string, ver: number): string {
   });
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- test helper returns the raw JWT claim that getTokenPayload gives (LooseObject, any); a typed return needs getTokenPayload to return JsonObject (sdk/src/tools/jwt.ts)
 function tokenVersion(tok: string): unknown {
   return getTokenPayload(tok)["ver"];
 }

@@ -22,6 +22,8 @@ import {
   testClock,
 } from "@sdk-test/ssr/browser-support";
 import type { Handler } from "@sdk-test/ssr/browser-support";
+import type { SerializeOptions } from "@sdk/tools/cookie";
+import type { BrowserToken } from "@sdk/ssr/types";
 
 const T0 = Math.floor(Date.now() / 1000);
 const clock = testClock(T0 * 1000);
@@ -31,7 +33,7 @@ const routesWith = (routes: Partial<AdapterRoutes>) => ({ routes });
 interface CookieWrite {
   name: string;
   value: string;
-  options: Record<string, unknown>;
+  options: SerializeOptions;
 }
 
 /** The user id a token names. */
@@ -180,7 +182,7 @@ describe("onRequest: the session on locals", () => {
     const { app } = await run(auth, "/");
     const locals = app.seen[0]?.locals as {
       pb?: ServerClient;
-      pbBrowserToken?: () => Promise<unknown>;
+      pbBrowserToken?: () => Promise<BrowserToken | null>;
     };
     expect(locals.pb?.authStore.isValid).toBe(false);
     expect(await locals.pbBrowserToken?.()).toBeNull();

@@ -207,6 +207,9 @@ export async function recordAuthResponse(
   return e.json(200, new RecordAuthResult(authRecord, token, meta));
 }
 
+// the auth response body's members: record, token and an optional meta
+type RecordAuthResultMembers = { record: Record; token: string; meta?: unknown };
+
 // the auth response body: {"meta"?, "record", "token"}, in this order
 class RecordAuthResult implements JSONMarshaler {
   constructor(
@@ -218,7 +221,10 @@ class RecordAuthResult implements JSONMarshaler {
   marshalJSON(): string {
     // marshal writes a plain object's members sorted by name, which is
     // the struct's field order here
-    const result: { [key: string]: unknown } = { record: this.record, token: this.token };
+    const result: RecordAuthResultMembers = {
+      record: this.record,
+      token: this.token,
+    };
     if (this.meta !== undefined && this.meta !== null) {
       result["meta"] = this.meta;
     }
@@ -249,6 +255,7 @@ async function wantsMFA(e: RequestEvent, record: Record): Promise<boolean> {
 
   resolver.updateQuery(query);
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- exists holds a database cell (rowAsync returns unknown cells) until Number() reads it
   let exists: unknown = 0;
   try {
     [exists] = await query.andWhere(expr).limit(1).rowAsync();

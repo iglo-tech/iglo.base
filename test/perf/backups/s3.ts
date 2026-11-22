@@ -52,7 +52,7 @@ function round(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-function sampleLatency(url: string): { stop: () => Promise<Record<string, number>> } {
+function sampleLatency(url: string) {
   const times: Array<number> = [];
   const state = { running: true };
   const loop = (async () => {
@@ -143,7 +143,7 @@ async function measure(name: string, command: Array<string>): Promise<void> {
     label: string,
     work: () => Promise<void>,
     latency = true,
-  ): Promise<Record<string, unknown>> => {
+  ): Promise<Record<string, string | number>> => {
     await Bun.sleep(500);
     const before = vm(pid, "VmRSS");
     peak = before;

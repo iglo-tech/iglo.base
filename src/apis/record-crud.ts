@@ -155,6 +155,11 @@ function enrichRecordSync(e: RequestEvent, info: RequestInfo, record: Record): u
   return undefined;
 }
 
+// the slot a handler step leaves its result in
+interface CollectedResult {
+  value?: HandlerResult;
+}
+
 // a handler step as a route handler
 function routeHandler(
   step: (e: RequestEvent, io: RecordIO) => HandlerStep,
@@ -165,14 +170,14 @@ function routeHandler(
       e.response.disableTimeout();
     }
 
-    const result: { value?: HandlerResult } = {};
+    const result: CollectedResult = {};
     await run(collectResult(step(e, routeIO), result));
     return result.value;
   };
 }
 
 // runs a handler step as a chain step that leaves its result in out
-export function* collectResult(step: HandlerStep, out: { value?: HandlerResult }): Step {
+export function* collectResult(step: HandlerStep, out: CollectedResult): Step {
   out.value = yield* step;
 }
 
@@ -557,6 +562,7 @@ export function* recordCreate(e: RequestEvent, io: RecordIO): HandlerStep {
       }
 
       let exists = 0;
+      // oxlint-disable-next-line quality/no-known-value-widening -- ruleErr holds the value a catch clause received, and a thrown value can be any JS value
       let ruleErr: unknown = null;
       try {
         const row = (yield io.row(ruleQuery.limit(1))) as Array<unknown>;

@@ -1116,6 +1116,7 @@ class FakeEventSource {
 }
 
 function setGlobal(name: string, value: unknown): void {
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- test shim: arbitrary values are set on and removed from globalThis by name, as the browser globals the client reads
   const scope = globalThis as Record<string, unknown>;
   if (value === undefined) {
     delete scope[name];

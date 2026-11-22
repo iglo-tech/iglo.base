@@ -57,7 +57,7 @@ function manualClock(startMs: number) {
   return {
     now: () => now,
     timers: {
-      setTimeout: (fn: () => void, ms: number): unknown => {
+      setTimeout: (fn: () => void, ms: number): number => {
         seq++;
         pending.set(seq, { due: now + ms, fn });
         return seq;
@@ -415,6 +415,7 @@ describe("browser client", () => {
       expect(flags.every((f) => !f.httpOnly)).toBe(true);
 
       // the page has no token: the browser client reads document.cookie
+      // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- globalThis holds host values of any type; the saved document and location are put back unchanged
       const scope = globalThis as Record<string, unknown>;
       const savedDocument = scope["document"];
       const savedLocation = scope["location"];
@@ -648,6 +649,7 @@ describe("browser client", () => {
   );
 });
 
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- globalThis holds host values of any type; the saved value is put back unchanged
 function restoreGlobal(scope: Record<string, unknown>, name: string, value: unknown): void {
   if (value === undefined) {
     delete scope[name];

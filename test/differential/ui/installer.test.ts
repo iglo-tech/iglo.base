@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 import { startServer, tempDir } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 function normalize(output: string, url: string): string {
   return output
@@ -20,15 +21,14 @@ function normalize(output: string, url: string): string {
     .replace(/running: \S+ superuser upsert/, "running: BIN superuser upsert");
 }
 
-function claims(output: string): Record<string, unknown> {
+function claims(output: string): JsonObject {
   const token = /pbinstall\/([\w-]+\.[\w-]+\.[\w-]+)/.exec(output)?.[1] ?? "";
-  return JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")) as Record<
-    string,
-    unknown
-  >;
+  return JSON.parse(
+    Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8"),
+  ) as JsonObject;
 }
 
-async function install(url: string, output: string): Promise<unknown> {
+async function install(url: string, output: string) {
   const token = /pbinstall\/([\w-]+\.[\w-]+\.[\w-]+)/.exec(output)?.[1] ?? "";
   const res = await fetch(`${url}/api/collections/_superusers/records`, {
     method: "POST",
@@ -39,7 +39,7 @@ async function install(url: string, output: string): Promise<unknown> {
       passwordConfirm: "1234567890",
     }),
   });
-  const body = (await res.json()) as Record<string, unknown>;
+  const body = (await res.json()) as JsonObject;
   return {
     status: res.status,
     keys: Object.keys(body).toSorted(),
@@ -49,7 +49,7 @@ async function install(url: string, output: string): Promise<unknown> {
 }
 
 // the superusers' emails, through upstream's API
-async function superusers(url: string): Promise<unknown> {
+async function superusers(url: string): Promise<Array<JsonObject>> {
   const login = await fetch(`${url}/api/collections/_superusers/auth-with-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -59,7 +59,7 @@ async function superusers(url: string): Promise<unknown> {
   const res = await fetch(`${url}/api/collections/_superusers/records?fields=email&sort=email`, {
     headers: { Authorization: token },
   });
-  return ((await res.json()) as { items: Array<unknown> }).items;
+  return ((await res.json()) as { items: Array<JsonObject> }).items;
 }
 
 test("fresh pb_data: banner, installer link and the first superuser", async () => {

@@ -93,7 +93,7 @@ describe("map", () => {
     [11, "abc"],
     [22, "xyz"],
   ]);
-  const m0: Record<string, unknown> | null = null;
+  const m0: null = null;
 
   const rows: Array<{ tag: string; model: unknown; rules: Array<KeyRules>; err: string }> = [
     // empty rules

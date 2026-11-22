@@ -312,6 +312,7 @@ export default class Client {
       return raw;
     }
 
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- values are the caller's filter parameters, arbitrary JS values that stringify() takes unchanged
     const paramsWithPlaceholders: Record<string, unknown> = {};
     for (const k in params) {
       paramsWithPlaceholders["{:" + k + "}"] = params[k];
@@ -460,6 +461,7 @@ export default class Client {
     return (
       fetchFunc(url, options)
         .then(async (response) => {
+          // oxlint-disable-next-line quality/no-known-value-widening -- the response body is arbitrary JSON (any shape, or the {} placeholder when it is not JSON) and is passed through unchanged; unknown is the true type
           let data: unknown = {};
 
           try {

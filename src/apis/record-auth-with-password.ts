@@ -42,11 +42,7 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
   }
 
   const form: AuthWithPasswordForm = { Identity: "", Password: "", IdentityField: "" };
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as { [key: string]: unknown },
-    authWithPasswordType,
-  );
+  const bindErr = await e.bindBody(form, authWithPasswordType);
   if (bindErr) {
     return firstApiError(
       bindErr,
@@ -64,10 +60,12 @@ export async function recordAuthWithPassword(e: RequestEvent): Promise<HandlerRe
   e.set(RequestEventKeyInfoContext, RequestInfoContextPasswordAuth);
 
   let foundRecord: Record | undefined;
+  // oxlint-disable-next-line quality/no-known-value-widening -- foundErr holds the value a catch clause received, and a thrown value can be any JS value
   let foundErr: unknown = null;
 
   const find = (field: string): void => {
     foundRecord = undefined;
+    // oxlint-disable-next-line quality/no-known-value-widening -- foundErr holds the value a catch clause received, and a thrown value can be any JS value
     foundErr = null;
     try {
       foundRecord = findRecordByIdentityField(e.app, collection, field, form.Identity);
@@ -137,11 +135,11 @@ const authWithPasswordType = structOf([
   { name: "IdentityField", type: "string", tags: { form: "identityField", json: "identityField" } },
 ]);
 
-interface AuthWithPasswordForm {
+type AuthWithPasswordForm = {
   Identity: string;
   Password: string;
   IdentityField: string;
-}
+};
 
 function validateAuthWithPasswordForm(
   form: AuthWithPasswordForm,

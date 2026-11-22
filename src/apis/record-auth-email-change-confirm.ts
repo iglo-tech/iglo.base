@@ -40,11 +40,7 @@ export async function recordConfirmEmailChange(e: RequestEvent): Promise<Handler
   }
 
   const form: EmailChangeConfirmForm = { Token: "", Password: "" };
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as { [key: string]: unknown },
-    emailChangeConfirmType,
-  );
+  const bindErr = await e.bindBody(form, emailChangeConfirmType);
   if (bindErr) {
     return firstApiError(
       bindErr,
@@ -96,10 +92,10 @@ const emailChangeConfirmType = structOf([
   { name: "Password", type: "string", tags: { form: "password", json: "password" } },
 ]);
 
-interface EmailChangeConfirmForm {
+type EmailChangeConfirmForm = {
   Token: string;
   Password: string;
-}
+};
 
 function validateEmailChangeConfirmForm(
   form: EmailChangeConfirmForm,

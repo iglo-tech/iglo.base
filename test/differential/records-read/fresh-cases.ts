@@ -5,6 +5,7 @@
 
 import { rid } from "@test/differential/resolver/schema";
 import type { ReadCase } from "@test/differential/records-read/fixture-cases";
+import type { JsonObject } from "@test/support/json";
 
 export type FreshIdentity = "guest" | "alice" | "bob" | "carol" | "superuser";
 
@@ -41,10 +42,7 @@ export const notes = [
   { id: rid("nt4"), title: "fourth", post: rid("p3") },
 ];
 
-export function notesCollection(
-  shape: RuleShape,
-  ids: (name: string) => string,
-): { [key: string]: unknown } {
+export function notesCollection(shape: RuleShape, ids: (name: string) => string): JsonObject {
   return {
     name: `notes_${shape.shape}`,
     type: "base",

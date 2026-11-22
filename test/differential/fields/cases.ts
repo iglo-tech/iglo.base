@@ -2,11 +2,14 @@
 // upstream (test/differential/fields/fields.test.ts). Values are JSON
 // texts, sent as they are in the request body.
 
-export type FieldDef = Record<string, unknown> & { name: string; type: string };
+import type { JsonObject } from "@test/support/json";
+
+export type FieldDef = JsonObject & { name: string; type: string };
 
 // Field settings upstream accepts: one collection per field type, one
 // field per entry (named "<type>_<index>").
-export const validSettings: Record<string, Array<Record<string, unknown>>> = {
+// oxlint-disable-next-line quality/no-known-value-widening -- JsonObject is the contract (the test sends these as JSON); an inferred literal union adds optional undefined members that JsonObject rejects, and each entry is typed FieldDef below
+export const validSettings: Record<string, Array<JsonObject>> = {
   text: [
     { min: 2, max: 10, pattern: "^[a-z]+$", help: "<b>Help</b> & more", presentable: true },
     { autogeneratePattern: "[a-z]{5}", required: true, hidden: true },

@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { fixtureDir } from "@test/scenarios/fixture";
+import type { JsonObject } from "@test/support/json";
 
 export interface TextPart {
   name: string;
@@ -36,7 +37,7 @@ export interface FileCase {
   ref?: string;
   parts?: Array<Part>;
   // a JSON body instead of parts
-  json?: Record<string, unknown>;
+  json?: JsonObject;
   // the multipart Content-Type's boundary parameter, as written (quoted)
   quotedBoundary?: string;
   // upstream's status
@@ -63,7 +64,7 @@ const file = (name: string, filename: string, content: Uint8Array | string): Fil
 const value = (name: string, v: string): TextPart => ({ name, value: v });
 
 // The collections, all rules "" (guests may write).
-export const collections: Array<Record<string, unknown>> = [
+export const collections: Array<JsonObject> = [
   {
     name: "fsingle",
     type: "base",

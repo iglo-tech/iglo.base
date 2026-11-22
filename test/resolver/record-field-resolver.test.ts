@@ -35,6 +35,7 @@ function expectPatternRegex(expectPattern: string): RegExp {
 }
 
 // a bound value as Go would hold it (Float64 is a Go float64)
+// oxlint-disable-next-line quality/no-unknown-returns -- a parameter value of any Go kind: a float64 is unwrapped, every other value passes through unchanged
 function goValue(v: unknown): unknown {
   return isInstance(Float64, v) ? v.value : v;
 }
@@ -652,7 +653,7 @@ describe("TestRecordFieldResolverUpdateQuery", () => {
       const r = newRecordFieldResolver(app, collection, requestInfo, s.allowHiddenFields);
 
       let expr;
-      let buildErr: unknown = null;
+      let buildErr = null;
       try {
         expr = filterBuildExpr(s.rule, r, { clock: app.clock });
       } catch (error) {
@@ -660,7 +661,7 @@ describe("TestRecordFieldResolverUpdateQuery", () => {
       }
       expect({ hasErr: buildErr !== null, buildErr }).toMatchObject({ hasErr: expectError });
 
-      let updateErr: unknown = null;
+      let updateErr = null;
       try {
         r.updateQuery(query);
       } catch (error) {
@@ -807,7 +808,7 @@ describe("TestRecordFieldResolverResolveCollectionFields", () => {
       const r = sharedResolver(app, collection, requestInfo);
 
       let result;
-      let err: unknown = null;
+      let err = null;
       try {
         result = r.resolve(fieldName);
       } catch (error) {
@@ -932,7 +933,7 @@ describe("TestRecordFieldResolverResolveStaticRequestInfoFields", () => {
       }
 
       let result;
-      let err: unknown = null;
+      let err = null;
       try {
         result = r.resolve(fieldName);
       } catch (error) {

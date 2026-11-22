@@ -12,6 +12,7 @@ import { Database } from "bun:sqlite";
 import { join } from "node:path";
 
 import type { AfterContext, PrepareContext, Scenario, Suite } from "@test/scenarios/scenario";
+import type { JsonObject } from "@test/support/json";
 
 const userToken =
   "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo";
@@ -21,7 +22,7 @@ const superuserToken =
 const asUser = { Authorization: userToken };
 const asSuperuser = { Authorization: superuserToken };
 
-export function setLogsSettings(dataDir: string, logs: Record<string, unknown>): void {
+export function setLogsSettings(dataDir: string, logs: JsonObject): void {
   const db = new Database(join(dataDir, "data.db"));
   try {
     const row = db.query("SELECT value FROM _params WHERE id = 'settings'").get() as {
@@ -29,7 +30,7 @@ export function setLogsSettings(dataDir: string, logs: Record<string, unknown>):
     };
     const isBlob = isInstance(Uint8Array, row.value);
     const text = isBlob ? new TextDecoder().decode(row.value as Uint8Array) : (row.value as string);
-    const settings = JSON.parse(text) as { logs: Record<string, unknown> };
+    const settings = JSON.parse(text) as { logs: JsonObject };
     Object.assign(settings.logs, logs);
     const updated = JSON.stringify(settings);
     db.query("UPDATE _params SET value = ? WHERE id = 'settings'").run(

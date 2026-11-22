@@ -47,6 +47,7 @@ import { usersToken } from "@test/scenarios/record-crud";
 import type { AfterContext, PrepareContext, Scenario, Suite } from "@test/scenarios/scenario";
 import { sharedOAuth2Mock } from "@test/support/oauth2-mock";
 import type { MockEndpoints, MockProvider, MockProviderSpec } from "@test/support/oauth2-mock";
+import type { JsonObject } from "@test/support/json";
 
 export const usersId = "_pb_users_auth_";
 export const user1Id = "4q1xlclmfloku33"; // test@example.com, unverified
@@ -105,13 +106,13 @@ export function useProvider(
 }
 
 // the claims of a provider-verified email
-export const verifiedEmail = (email: string): { email: string; email_verified: boolean } => ({
+export const verifiedEmail = (email: string) => ({
   email,
   email_verified: true,
 });
 
-const body = (createData?: unknown): string => {
-  const data: { [key: string]: unknown } = {
+const body = (createData?: JsonObject): string => {
+  const data: JsonObject = {
     provider: "oidc",
     code: "123",
     redirectURL: "https://example.com",

@@ -16,6 +16,7 @@ import type { SdkEnv } from "@test/differential/sdk/harness";
 import { Browser } from "@test/differential/sdk-ssr/browser";
 import { useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
 import type { MockProvider } from "@test/support/oauth2-mock";
+import type { JsonObject } from "@test/support/json";
 
 const APP = "http://localhost:3000";
 const CALLBACK = `${APP}/callback`;
@@ -58,8 +59,13 @@ function cookieShapes(response: Response): Array<string> {
     .toSorted();
 }
 
+type PostHeaders = {
+  "Content-Type": string;
+  Origin?: string;
+};
+
 const post = (body: unknown, origin: string | null = APP): Request => {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: PostHeaders = { "Content-Type": "application/json" };
   if (origin !== null) {
     headers["Origin"] = origin;
   }
@@ -70,8 +76,8 @@ const post = (body: unknown, origin: string | null = APP): Request => {
   });
 };
 
-function parseCookieJson(value: string | undefined): Record<string, unknown> {
-  return JSON.parse(decodeURIComponent(value ?? "{}")) as Record<string, unknown>;
+function parseCookieJson(value: string | undefined): JsonObject {
+  return JSON.parse(decodeURIComponent(value ?? "{}")) as JsonObject;
 }
 
 describe("SSR OAuth2 and CSRF differential", () => {

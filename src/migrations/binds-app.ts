@@ -48,7 +48,7 @@ import {
 import { auxRunInTransaction } from "@/db/tx";
 import { goArgs, goMethod } from "@/migrations/go-class";
 import type { Method } from "@/migrations/go-class";
-import type { Adapter, Membrane } from "@/migrations/membrane";
+import type { Adapter, Membrane, MigrationObject } from "@/migrations/membrane";
 import { pass } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { expandRecordsSync } from "@/records/record-query-expand";
@@ -74,6 +74,7 @@ import {
   saveRecordSync,
   validateRecordSync,
 } from "@/records/record-save";
+import type { SettingsExport } from "@/settings/settings-model";
 import { Settings } from "@/settings/settings-model";
 import { saveSettingsSync } from "@/settings/settings-query";
 import { isInstance } from "@/tools/types/is-instance";
@@ -83,6 +84,7 @@ export type RunTxFunc = (fn: unknown, txApp: App) => void;
 
 export class AppBinding {
   closed = false;
+  // oxlint-disable-next-line quality/no-unknown-returns -- the app methods return Go values of many types, which a migration file receives through toVm unchanged
   readonly methods: Record<string, (...args: Array<never>) => unknown>;
 
   constructor(
@@ -97,12 +99,13 @@ export class AppBinding {
   }
 
   // Settings.DBExport(app)
-  exportSettings(settings: Settings): unknown {
+  exportSettings(settings: Settings): SettingsExport {
     return settings.dbExportSync(this.app.clock, this.app.getenv(this.app.encryptionEnv));
   }
 }
 
 // func(txApp core.App) error
+// oxlint-disable-next-line quality/no-unknown-returns -- returns the migration file's own function, of any signature, passed through unchanged; its inferred type is Function, which the lint rule bans, and an explicit signature would need an assertion
 function txFunc(m: Membrane, fn: unknown): unknown {
   if (typeof fn !== "function") {
     throw new m.vm.TypeError(
@@ -124,6 +127,7 @@ function expandFetch(m: Membrane, fn: unknown): ExpandFetchSyncFunc | null {
     );
   }
   return (relCollection, relIds) => {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a migration file's function returns a value of any JS type, which is converted by toHost
     const result = (fn as (...args: Array<unknown>) => unknown)(
       m.toVm(relCollection),
       m.toVm(relIds),
@@ -140,7 +144,7 @@ function expandFetch(m: Membrane, fn: unknown): ExpandFetchSyncFunc | null {
 }
 
 // the Go signatures of core.App, with the names of go-class.ts
-const appMethods: Readonly<Record<string, Method>> = {
+const appMethods = {
   dataDir: "",
   encryptionEnv: "",
   isDev: "",
@@ -209,7 +213,7 @@ const appMethods: Readonly<Record<string, Method>> = {
       ),
     );
   },
-};
+} satisfies Readonly<Record<string, Method>>;
 
 type AppMethods = AppBinding["methods"];
 
@@ -235,7 +239,7 @@ export const appBindingAdapter: Adapter = {
       throw new Error(`app.${key} is not available in iglo.base migrations`);
     }
 
-    return goMethod(m, binding.methods, key, appMethods[key] as Method);
+    return goMethod(m, binding.methods, key, appMethods[key as keyof typeof appMethods]);
   },
   set() {
     return pass;
@@ -322,10 +326,8 @@ function newAppMethods(app: App, runTxFunc: RunTxFunc): AppBinding["methods"] {
       isCollectionNameUnique(app, name, ...excludeIds),
     truncateCollection: (c: Collection) => truncateCollection(app, c),
     reloadCachedCollections: () => reloadCachedCollections(app),
-    importCollections: (
-      data: ReadonlyArray<Record<string, unknown> | null>,
-      deleteMissing: boolean,
-    ) => importCollections(app, data, deleteMissing === true),
+    importCollections: (data: ReadonlyArray<MigrationObject | null>, deleteMissing: boolean) =>
+      importCollections(app, data, deleteMissing === true),
     importCollectionsByMarshaledJSON: (raw: string | Uint8Array, deleteMissing: boolean) =>
       importCollectionsByMarshaledJSON(app, raw, deleteMissing === true),
 

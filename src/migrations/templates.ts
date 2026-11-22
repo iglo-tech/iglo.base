@@ -17,7 +17,10 @@ const jsTypesDirective = `/// <reference path="../pb_data/types.d.ts" />\n`;
 
 export const ErrEmptyTemplate = new Error("empty template");
 
-type JSONObject = Record<string, unknown>;
+// a value JSON.parse of a collection's marshalJSON can give
+type JSONValue = string | number | boolean | null | Array<JSONValue> | JSONObject;
+
+type JSONObject = { [key: string]: JSONValue };
 
 export function jsBlankTemplate(): string {
   return (
@@ -227,7 +230,7 @@ function toMap(c: Collection): JSONObject {
   return JSON.parse(c.marshalJSON()) as JSONObject;
 }
 
-function diffMaps(old: JSONObject, newMap: JSONObject, ...excludeKeys: Array<string>): JSONObject {
+function diffMaps(old: JSONObject, newMap: JSONObject, ...excludeKeys: Array<string>) {
   const diff: JSONObject = {};
 
   for (const [k, vNew] of Object.entries(newMap)) {

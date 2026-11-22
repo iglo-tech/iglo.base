@@ -61,7 +61,7 @@ function declarationOf(text: string, head: string): string {
 }
 
 // the SHA-256 of the database files: they must not change under the command
-function digests(dataDir: string): Record<string, string> {
+function digests(dataDir: string) {
   const result: Record<string, string> = {};
   for (const name of ["data.db", "auxiliary.db"]) {
     const path = join(dataDir, name);
@@ -202,11 +202,11 @@ describe("schema types", () => {
     expect(fresh.exitCode).toBe(0);
 
     const changed = structuredClone(typesSchema);
-    const fields: Record<string, unknown> = {
+    const fields = {
       ...changed.collections.posts.fields,
       subtitle: { type: "text" },
     };
-    changed.collections.posts.fields = fields as typeof changed.collections.posts.fields;
+    changed.collections.posts.fields = fields;
     const changedSchema = writeSchema(site.root, "changed.json", changed);
     const stale = await run([
       "--dir",

@@ -14,20 +14,26 @@
 // it, so the counts are what upstream did. A body is a function of the
 // current state (Ctx), read through upstream's GET before the step runs.
 
+import type { JsonObject } from "@test/support/json";
+
+// a request body: JSON.stringify sends it, and drops the properties that are
+// undefined (the case literals have optional undefined members)
+type Body = string | number | boolean | null | Array<Body> | { [key: string]: Body | undefined };
+
 export interface Ctx {
   // the id of a collection (by name)
   id(collection: string): string;
   // the stored fields of a collection, as upstream's GET returns them
-  fields(collection: string): Array<Record<string, unknown>>;
+  fields(collection: string): Array<JsonObject>;
   // the collection as upstream's GET returns it
-  collection(name: string): Record<string, unknown>;
+  collection(name: string): JsonObject;
   // every collection as upstream's GET returns them
-  all(): Array<Record<string, unknown>>;
+  all(): Array<JsonObject>;
 }
 
 export type Step = { name: string; ok: boolean } & (
-  | { kind: "create"; body: (ctx: Ctx) => unknown }
-  | { kind: "update"; target: string; body: (ctx: Ctx) => unknown }
+  | { kind: "create"; body: (ctx: Ctx) => Body }
+  | { kind: "update"; target: string; body: (ctx: Ctx) => Body }
   | { kind: "delete"; target: string }
   | { kind: "import"; body: (ctx: Ctx) => { collections: Array<unknown>; deleteMissing: boolean } }
   | { kind: "sql"; sql: Array<string> }
@@ -38,8 +44,8 @@ function withField(
   ctx: Ctx,
   collection: string,
   field: string,
-  fn: (f: Record<string, unknown>) => void,
-): Array<Record<string, unknown>> {
+  fn: (f: JsonObject) => void,
+): Array<JsonObject> {
   const fields = ctx.fields(collection);
   const f = fields.find((x) => x.name === field);
   if (f === undefined) {
@@ -50,7 +56,7 @@ function withField(
 }
 
 // every collection that is not a system one, as upstream's GET returns it
-function userCollections(ctx: Ctx, except: Array<string> = []): Array<Record<string, unknown>> {
+function userCollections(ctx: Ctx, except: Array<string> = []): Array<JsonObject> {
   return ctx.all().filter((c) => c.system !== true && !except.includes(c.name as string));
 }
 
@@ -531,7 +537,7 @@ export const steps: Array<Step> = [
         // drop a field by leaving it out
         return {
           ...c,
-          fields: (c.fields as Array<Record<string, unknown>>).filter((f) => f.name !== "loc"),
+          fields: (c.fields as Array<JsonObject>).filter((f) => f.name !== "loc"),
         };
       });
       return { deleteMissing: true, collections };

@@ -36,6 +36,7 @@ import { decodeString, unmarshalGoStruct } from "@/collections/go-json-struct";
 
 import { openDataDir } from "@test/collections/app";
 import { runUpstream } from "@test/differential/db/fixture";
+import type { JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 
 const { values } = parseArgs({
@@ -70,11 +71,13 @@ const fieldTypes = [
   "file",
 ];
 
-function fields50Body(i: number): Record<string, unknown> {
-  const fields = [];
+type FieldBody = { name: string; type: string; values?: Array<string> };
+
+function fields50Body(i: number) {
+  const fields: Array<FieldBody> = [];
   for (let f = 0; f < 50; f++) {
     const type = fieldTypes[f % fieldTypes.length] as string;
-    const field: Record<string, unknown> = { name: `f${f}_${type}`, type };
+    const field: FieldBody = { name: `f${f}_${type}`, type };
     if (type === "select") {
       field.values = ["a", "b"];
     }
@@ -108,7 +111,7 @@ interface Result {
 // iglo.base (child process)
 
 // apis/collection.go collectionCreate / collectionUpdate
-function create(body: Record<string, unknown>): Collection {
+function create(body: JsonObject): Collection {
   const raw = JSON.stringify(body);
   const extract = { type: "", name: "" };
   unmarshalGoStruct(
@@ -134,7 +137,7 @@ function igloScenario(dataDir: string, scenario: Scenario): Result {
   const app = openDataDir(dataDir);
   reloadCachedCollections(app);
 
-  const update = (target: string, body: Record<string, unknown>): Collection => {
+  const update = (target: string, body: JsonObject): Collection => {
     const c = findCollectionByNameOrId(app, target);
     c.unmarshalJSON(JSON.stringify(body));
     return c;

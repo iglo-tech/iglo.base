@@ -39,6 +39,7 @@ import { corpus } from "@test/differential/mimetype/corpus";
 import type { Sample } from "@test/differential/mimetype/corpus";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const email = "mimetype@example.com";
 const password = "1234567890";
@@ -95,6 +96,11 @@ interface Field {
   mimeTypes: Array<string>;
 }
 
+type ApiHeaders = {
+  authorization: string;
+  "content-type"?: string;
+};
+
 function fieldsFor(m: MIME): Array<Field> {
   const [base] = parseMediaType(m.string());
   const ancestors: Array<string> = [];
@@ -113,7 +119,7 @@ async function api(method: string, path: string, body: string | FormData) {
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const headers: Record<string, string> = { authorization: token };
+  const headers: ApiHeaders = { authorization: token };
   if (typeof body === "string") {
     headers["content-type"] = "application/json";
   }
@@ -204,7 +210,7 @@ async function check(sample: Sample, i: number): Promise<Array<string>> {
           join(dataDir, "storage", collectionId, record.id, `${record.plain}.attrs`),
           "utf8",
         ),
-      ) as Record<string, unknown>;
+      ) as JsonObject;
       if (attrs["user.content_type"] !== m.string()) {
         problems.push(
           `content type: iglo.base ${m.string()}, upstream ${String(attrs["user.content_type"])}`,

@@ -133,7 +133,7 @@ class TruncatedDecoder {
         this.failed = true;
         return obj;
       }
-      let value: unknown = null;
+      let value = null;
       if (this.s[this.i] === ":") {
         this.i++;
         value = this.value();
@@ -165,7 +165,7 @@ class TruncatedDecoder {
     }
   }
 
-  private value(): unknown {
+  private value() {
     const c = this.s[this.i];
     switch (c) {
       case undefined:
@@ -193,7 +193,7 @@ class TruncatedDecoder {
     return this.number();
   }
 
-  private literal(text: string, value: unknown): unknown {
+  private literal(text: string, value: unknown) {
     if (!this.s.startsWith(text, this.i)) {
       this.failed = true;
       return null;
@@ -204,7 +204,7 @@ class TruncatedDecoder {
 
   // a number that ends with the input is complete, unless its fraction or
   // exponent has no digits yet
-  private number(): unknown {
+  private number() {
     numberPattern.lastIndex = this.i;
     const match = numberPattern.exec(this.s);
     const next = match ? this.s[this.i + match[0].length] : ".";

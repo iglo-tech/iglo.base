@@ -91,6 +91,7 @@ import { isInstance } from "@/tools/types/is-instance";
 const recordFlags = encodeFlags({ allowDuplicateNames: true, allowInvalidUTF8: true });
 
 // A Go map[string]any: a plain object with own properties.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any of a record's public export: the field values, of the types each field stores
 export type DataMap = { [key: string]: unknown };
 
 // dbx.NullStringMap: each column's text, or null for a NULL column (not
@@ -107,7 +108,7 @@ export type NullStringMap = { readonly [column: string]: string | null };
 // The row must be read withExactIntegers (src/db/dbx/query.ts), so that
 // every INTEGER value is a bigint and every number a REAL value: a narrowed
 // integer from 1e6 on would be formatted as a float ("1.234567e+06").
-export function nullStringMapFromRow(row: Row): NullStringMap {
+export function nullStringMapFromRow(row: Row) {
   const out: { [column: string]: string | null } = {};
   for (const [column, v] of Object.entries(row)) {
     setOwn(out, column, nullStringText(v));
@@ -460,7 +461,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // FieldsData returns a shallow copy ONLY of the collection's fields record's data.
-  fieldsData(): DataMap {
+  fieldsData() {
     const result: DataMap = {};
 
     for (const field of this.#collection.fields) {
@@ -475,7 +476,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   // aka. fields that are neither defined by the collection, nor special system ones.
   //
   // Note that custom fields prefixed with "@pbInternal" are always skipped.
-  customData(): DataMap {
+  customData() {
     const knownFields = new Set<string>();
 
     for (const f of this.#collection.fields) {
@@ -585,6 +586,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
     }
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- a record value: the value a key holds, of any kind (custom keys are set as they are)
   getRaw(key: string): unknown {
     if (key === FieldNameId) {
       return this.id;
@@ -601,6 +603,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
   }
 
   // Get returns a normalized single record model data value for "key".
+  // oxlint-disable-next-line quality/no-unknown-returns -- a record value: a getter's result or the stored value, of any kind
   get(key: string): unknown {
     switch (key) {
       case FieldNameExpand: // for backward-compatibility with earlier versions
@@ -697,6 +700,7 @@ export class Record extends BaseModel implements FieldRecord, JSONMarshaler {
 
   // Retrieves the "key" json field value and unmarshals it into a value of
   // the Go type t (json.Unmarshal; any by default). Throws Go's error.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the Go value decoded into t: unmarshal's result has the Go type t, which is not known statically
   unmarshalJSONField(key: string, t: GoType = anyType): unknown {
     return unmarshal(this.getString(key), t);
   }
@@ -1159,7 +1163,7 @@ function toMap(
   return new Map<string, unknown>(isInstance(Map, data) ? data : Object.entries(data));
 }
 
-function toDataMap(m: ReadonlyMap<string, unknown>): DataMap {
+function toDataMap(m: ReadonlyMap<string, unknown>) {
   const out: DataMap = {};
   for (const [k, v] of m) {
     setOwn(out, k, v);

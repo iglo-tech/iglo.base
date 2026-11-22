@@ -27,9 +27,11 @@ import { compareResponses, Pairing, readStartingData } from "@test/differential/
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import type { ScenarioResponse } from "@test/scenarios/request";
+import type { Json, JsonObject } from "@test/support/json";
 import { send } from "@test/scenarios/runner";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners
@@ -37,7 +39,7 @@ const timeout = 180_000;
 
 interface Server {
   url: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 const roots: Array<string> = [];
@@ -83,7 +85,7 @@ const tokens: Record<Identity, string> = {
 };
 
 function request(c: ApiCase): Scenario {
-  const headers: Record<string, string> = { ...c.headers };
+  const headers = { ...c.headers };
   if (tokens[c.as] !== "") {
     headers["Authorization"] = tokens[c.as];
   }
@@ -114,13 +116,13 @@ function withDb<T>(dataDir: string, fn: (db: Database) => T): T {
 
 interface StoredState {
   schema: Array<unknown>;
-  collections: Array<Record<string, unknown>>;
+  collections: Array<JsonObject>;
   timestamps: Array<string>;
   records: Record<string, Array<string>>;
   files: Array<string>;
 }
 
-function mask(text: unknown): unknown {
+function mask(text: Json): Json {
   return typeof text === "string"
     ? text
         .replaceAll(/_clone_[A-Za-z0-9]{4}/g, "_clone_*")
@@ -135,12 +137,10 @@ function storedState(dataDir: string): StoredState {
         "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
       )
       .all();
-    const rows = db.query("SELECT * FROM _collections ORDER BY name").all() as Array<
-      Record<string, unknown>
-    >;
+    const rows = db.query<JsonObject, []>("SELECT * FROM _collections ORDER BY name").all();
     const timestamps: Array<string> = [];
     const collections = rows.map((row) => {
-      const out: Record<string, unknown> = {};
+      const out: JsonObject = {};
       for (const [k, v] of Object.entries(row)) {
         if (k === "created" || k === "updated") {
           timestamps.push(`${String(row["name"])}.${k}: ${dateFormat.test(String(v)) ? "ok" : v}`);

@@ -24,6 +24,7 @@ import {
   ValidationErrors,
 } from "@/server/error";
 import type { SafeErrorItem, SafeErrorResolver } from "@/server/error";
+import type { JsonObject } from "@test/support/json";
 
 class RequiredError extends Error {
   constructor() {
@@ -38,9 +39,9 @@ class RequiredError extends Error {
 
 class TestValidationError extends Error implements SafeErrorItem {
   readonly #code: string;
-  readonly #params: Record<string, unknown>;
+  readonly #params: JsonObject;
 
-  constructor(code: string, message: string, params: Record<string, unknown> = {}) {
+  constructor(code: string, message: string, params: JsonObject = {}) {
     super(message);
     this.name = "TestValidationError";
     this.#code = code;
@@ -51,7 +52,7 @@ class TestValidationError extends Error implements SafeErrorItem {
     return this.#code;
   }
 
-  params(): Record<string, unknown> {
+  params(): JsonObject {
     return this.#params;
   }
 }
@@ -66,7 +67,7 @@ class MockSafeErrorItem extends Error implements SafeErrorItem, SafeErrorResolve
     return "mock_code";
   }
 
-  resolve(errData: Record<string, unknown>): Record<string, unknown> {
+  resolve(errData: JsonObject): JsonObject {
     errData.mock_resolve = 123;
     return errData;
   }

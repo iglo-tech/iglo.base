@@ -8,6 +8,7 @@ import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
 import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { CrudService } from "@sdk/services/CrudService";
 import type { ListResult, RecordModel } from "@sdk/tools/dtos";
+import type { JsonObject } from "@sdk/tools/json";
 import { normalizeLegacyOptionsArgs } from "@sdk/tools/legacy";
 import type {
   CommonOptions,
@@ -306,7 +307,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
    * Prepare successful collection authorization response.
    */
   protected authResponse<T = M>(responseData: LooseObject): RecordAuthResponse<T> {
-    const record = this.decode((responseData?.record || {}) as Record<string, unknown>);
+    const record = this.decode((responseData?.record || {}) as JsonObject);
 
     this.client.authStore.save(responseData?.token as string, record as AuthRecord);
 
@@ -667,7 +668,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
                 })();
               });
 
-              const replacements: Record<string, string> = {
+              const replacements: Partial<Record<"state" | "scope", string>> = {
                 state: realtime.clientId,
               };
               if (config.scopes?.length) {
@@ -1140,7 +1141,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
 
     client.authStore.save(
       authData?.token as string,
-      this.decode((authData?.record || {}) as Record<string, unknown>),
+      this.decode((authData?.record || {}) as JsonObject),
     );
     // ---
 
@@ -1153,7 +1154,7 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
   // URL (and URLSearchParams) doesn't seem to be fully supported in React Native
   //
   // note: for details behind some of the decode/encode parsing check https://unixpapa.com/js/querystring.html
-  private _replaceQueryParams(url: string, replacements: Record<string, unknown> = {}): string {
+  private _replaceQueryParams(url: string, replacements: Record<string, string> = {}): string {
     let urlPath = url;
     let query = "";
 

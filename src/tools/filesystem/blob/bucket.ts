@@ -117,6 +117,7 @@ function q(s: string): string {
 
 // wrapError wraps err; a not found error is joined with ErrNotFound by
 // the driver.
+// oxlint-disable-next-line quality/no-unknown-returns -- a caught error of any thrown value, returned unchanged unless it is wrapped
 export function wrapError(b: Pick<Driver, "normalizeError">, err: unknown, key: string): unknown {
   // don't wrap or normalize EOF errors
   if (errorsIs(err, errEOF)) {
@@ -420,11 +421,7 @@ export function checkKey(call: string, key: string): void {
 
 // NewWriter's checks of the key, metadata and content type; checkOpen runs
 // between them, as upstream's order has it
-export function checkWriterOptions(
-  key: string,
-  opts: WriterOptions,
-  checkOpen: () => void,
-): { contentType: string; metadata: Map<string, string> | null } {
+export function checkWriterOptions(key: string, opts: WriterOptions, checkOpen: () => void) {
   checkKey("NewWriter", key);
 
   let md: Map<string, string> | null = null;

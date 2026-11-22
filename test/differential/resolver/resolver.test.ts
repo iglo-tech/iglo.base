@@ -85,6 +85,7 @@ import {
   rid,
 } from "@test/differential/resolver/schema";
 import { copyDataDir } from "@test/scenarios/fixture";
+import type { Json } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 
@@ -135,7 +136,7 @@ async function api(
   body?: unknown,
   auth: string = tokens.get("superuser") ?? "",
   headers: { [key: string]: string } = {},
-): Promise<{ status: number; json: unknown }> {
+): Promise<{ status: number; json: Json }> {
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
@@ -151,10 +152,10 @@ async function api(
   }
   const res = await fetch(`${upstream.url}${path}`, init);
   const text = await res.text();
-  return { status: res.status, json: text === "" ? null : (JSON.parse(text) as unknown) };
+  return { status: res.status, json: text === "" ? null : (JSON.parse(text) as Json) };
 }
 
-async function ok(method: string, path: string, body?: unknown): Promise<unknown> {
+async function ok(method: string, path: string, body?: unknown): Promise<Json> {
   const res = await api(method, path, body);
   if (res.status !== 200 && res.status !== 204) {
     throw new Error(`${method} ${path}: ${res.status} ${JSON.stringify(res.json)}`);
@@ -179,8 +180,10 @@ function qs(params: { [key: string]: string }): string {
     .join("&");
 }
 
+type FilterQueryParams = { perPage: string; filter?: string; sort?: string };
+
 function filterQuery(fc: FilterCase): string {
-  const params: { [key: string]: string } = { perPage: "200" };
+  const params: FilterQueryParams = { perPage: "200" };
   if (fc.filter !== "") {
     params.filter = fc.filter;
   }
@@ -197,13 +200,14 @@ function ruleText(rule: string | null | undefined): string | null {
   return rule.replaceAll(/\{id:(\w+)\}/g, (_m, name: string) => ids(name));
 }
 
-function caseRules(rc: RuleCase): { listRule: string | null; viewRule: string | null } {
+function caseRules(rc: RuleCase) {
   const listRule = ruleText(rc.listRule);
   const viewRule = rc.viewRule === undefined ? listRule : ruleText(rc.viewRule);
   return { listRule, viewRule };
 }
 
-function listQueryParams(rc: RuleCase): { [key: string]: string } {
+function listQueryParams(rc: RuleCase) {
+  // oxlint-disable-next-line quality/no-known-value-widening -- the spread of rc.query adds the case's own query keys (tag, level, status, empty, q, flag, ...), which are known only at run time from the case data; qs takes a string dictionary
   const params: { [key: string]: string } = { perPage: "200", sort: "id", ...rc.query };
   if (rc.filter !== undefined) {
     params.filter = rc.filter;
@@ -440,7 +444,7 @@ function queryEncode(rawQuery: string): string {
 }
 
 // the first value of each query param (RequestInfo.query)
-function firstValues(rawQuery: string): { [key: string]: string } {
+function firstValues(rawQuery: string) {
   const result: { [key: string]: string } = {};
   for (const [k, v] of parseQuery(rawQuery).values) {
     if (v.length > 0) {
@@ -562,7 +566,7 @@ async function igloList(
 }
 
 // the listRule error of validateCollection for the filter as the rule
-function igloRuleError(app: CollectionsApp, collectionName: string, rule: string): unknown {
+function igloRuleError(app: CollectionsApp, collectionName: string, rule: string) {
   const collection = findCollectionByNameOrId(app, collectionName);
   collection.listRule = rule;
   const result = validateCollection(app, collection);
@@ -594,7 +598,7 @@ function setStoredRules(
   reloadCachedCollections(app);
 }
 
-function errorOf(fn: () => unknown): unknown {
+function errorOf(fn: () => void) {
   try {
     fn();
     return null;
@@ -743,6 +747,7 @@ describe("rules matrix", () => {
               syncResult = canAccessRecord(app, record, viewInfo, rules.viewRule);
             });
             let asyncResult = false;
+            // oxlint-disable-next-line quality/no-known-value-widening -- asyncErr holds a caught value, which is unknown; the null start value is the sentinel the !== null check reads, and a named type would not be true of a thrown value
             let asyncErr: unknown = null;
             try {
               asyncResult = await canAccessRecordAsync(app, record, viewInfo, rules.viewRule);

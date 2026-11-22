@@ -40,7 +40,7 @@ describe("EmailTemplateResolve", () => {
 
   const scenarios: Array<{
     name: string;
-    placeholders: Record<string, unknown> | null;
+    placeholders: Record<string, string | number> | null;
     template: EmailTemplate;
     expectedSubject: string;
     expectedBody: string;

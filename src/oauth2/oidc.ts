@@ -52,6 +52,7 @@ export class OIDC extends BaseProvider {
   async fetchAuthUser(token: Token): Promise<AuthUser> {
     const data = await this.fetchRawUserInfo(token);
 
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the userinfo document decoded as a JSON object of any kind
     const rawUser = unmarshal(data, mapOf(anyType)) as { [key: string]: unknown } | undefined;
 
     const extracted = { sub: "", name: "", preferred_username: "", picture: "", email: "" };

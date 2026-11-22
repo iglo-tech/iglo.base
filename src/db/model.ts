@@ -10,8 +10,8 @@ import type { PostScanner, StructModel, TableModel } from "@/db/dbx/struct";
 //
 // Note: for simplicity composite pk are not supported.
 export interface Model extends TableModel {
-  pk(): unknown;
-  lastSavedPK(): unknown;
+  pk(): string;
+  lastSavedPK(): string;
   isNew(): boolean;
   markAsNew(): void;
   markAsNotNew(): void;

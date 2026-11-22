@@ -37,7 +37,7 @@ import { driverError, withDriverErrors } from "@/collections/driver-error";
 import { wrapError } from "@/collections/view";
 import { HashExp, inExp, newExp } from "@/db/dbx/expression";
 import type { Expression } from "@/db/dbx/expression";
-import type { Row } from "@/db/dbx/query";
+import type { OneHookOp, Row } from "@/db/dbx/query";
 import type { SelectQuery } from "@/db/dbx/select";
 import type { StructModel } from "@/db/dbx/struct";
 import { defaultMaxLockRetries, execLockRetry, execLockRetryAsync } from "@/db/retry";
@@ -103,6 +103,7 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
   let tableName = "";
 
   let collection: Collection | null = null;
+  // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type (getCollectionByModelOrIdentifier), passed to withCancelCause unchanged
   let collectionErr: unknown = null;
   try {
     collection = getCollectionByModelOrIdentifier(app, collectionModelOrIdentifier);
@@ -164,7 +165,7 @@ export function recordQuery(app: RecordsApp, collectionModelOrIdentifier: unknow
   });
 }
 
-function resolveRecordOneHook(collection: Collection, op: (dst: unknown) => unknown): Record {
+function resolveRecordOneHook(collection: Collection, op: OneHookOp): Record {
   const data = op(undefined) as Row;
   return newRecordFromRow(collection, data);
 }
@@ -381,6 +382,7 @@ export function findAuthRecordByToken(
 }
 
 // claims[key].(string): the claim if it is a string, else ""
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: JWT claims, a JSON object of any kind (jwt.MapClaims); only a string claim is read
 function stringClaim(claims: { [key: string]: unknown }, key: string): string {
   const v = Object.hasOwn(claims, key) ? claims[key] : undefined;
   return typeof v === "string" ? v : "";

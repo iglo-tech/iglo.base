@@ -3,7 +3,7 @@
 // The colors are fatih/color's: a bold attribute ends with its own reset.
 
 import { LevelDebug, LevelError, LevelInfo, LevelWarn } from "@/logs/batch-handler";
-import type { Log } from "@/logs/batch-handler";
+import type { Log, LogAttrs } from "@/logs/batch-handler";
 import { isJSONMarshaler } from "@/tools/types/go-json";
 import { jsonMapString } from "@/tools/types/json-map";
 
@@ -27,7 +27,7 @@ function formatValue(value: unknown): string {
     return `[${value.map(formatValue).join(" ")}]`;
   }
   if (typeof value === "object" && !isJSONMarshaler(value)) {
-    const map = value as { [key: string]: unknown };
+    const map = value as LogAttrs;
     const items = Object.keys(map)
       .toSorted()
       .map((key) => `${key}:${formatValue(map[key])}`);

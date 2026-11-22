@@ -67,6 +67,7 @@ import {
   newBaseCollection,
   interceptorArgs,
 } from "@test/support/fields";
+import type { JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 
@@ -93,6 +94,8 @@ function model(): TestApp {
   return app;
 }
 
+type PasswordRequestHeaders = { "content-type": string; authorization?: string };
+
 async function request(
   method: string,
   path: string,
@@ -102,7 +105,7 @@ async function request(
   if (upstream === undefined) {
     throw new Error("upstream is not running");
   }
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  const headers: PasswordRequestHeaders = { "content-type": "application/json" };
   if (auth) {
     headers.authorization = token;
   }
@@ -183,7 +186,8 @@ afterAll(async () => {
 function resolve(def: FieldDef): FieldDef {
   const collectionId = def.collectionId;
   if (typeof collectionId === "string" && placeholders.has(collectionId)) {
-    return { ...def, collectionId: placeholders.get(collectionId) };
+    // has() checked the entry; the ids set above are typed as strings, and get() returns the entry
+    return { ...def, collectionId: placeholders.get(collectionId) as string };
   }
   return def;
 }
@@ -250,7 +254,7 @@ function settingsErrors(collection: TestCollection): Errors | null {
 function fieldsListJSON(collection: TestCollection): string {
   return marshal(
     [...collection.fields].map((field) => {
-      const data = unmarshal(field.marshalJSON(), mapOf(anyType)) as Record<string, unknown>;
+      const data = unmarshal(field.marshalJSON(), mapOf(anyType)) as JsonObject;
       data.type = field.type();
       return data;
     }),
@@ -267,7 +271,7 @@ function responseFields(body: string): string {
 async function checkCollection(
   method: string,
   path: string,
-  body: Record<string, unknown>,
+  body: JsonObject,
   collection: TestCollection,
 ): Promise<number> {
   const errs = settingsErrors(collection);
@@ -404,6 +408,7 @@ const storedRecords: Array<StoredRecord> = [];
 
 // the value a record field is bound with: DriverValue (JSONArray for
 // arrays)
+// oxlint-disable-next-line quality/no-unknown-returns -- the bound value is an arbitrary driver value (Go's driver.Value, and the record's raw field value), passed through unchanged to SQLite, which checks its type on bind
 function bindValue(field: Field, record: TestRecord): unknown {
   let v: unknown = record.getRaw(field.getName());
   if (isDriverValuer(field)) {
@@ -444,12 +449,7 @@ function storeModel(
   }
 }
 
-function readColumns(
-  db: Database,
-  table: string,
-  names: Array<string>,
-  id: string | null,
-): Record<string, [string, unknown]> {
+function readColumns(db: Database, table: string, names: Array<string>, id: string | null) {
   if (names.length === 0) {
     return {};
   }
@@ -473,6 +473,7 @@ function modelRecordBody(
   stored: Record<string, string>,
 ): string {
   const read = new TestRecord(collection);
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type, quality/no-known-value-widening -- the prepared values of the fields are the Go values prepareValue returns (unknown), marshaled unchanged; the fields are added to out after construction, under names the literal does not have
   const out: Record<string, unknown> = {
     collectionId,
     collectionName: collection.name,
@@ -518,7 +519,7 @@ describe("values", () => {
 
       // the model: record.Load of the decoded body, the "validate"
       // interceptors, then every field's ValidateValue
-      const body = unmarshal(bodyText, mapOf(anyType)) as Record<string, unknown>;
+      const body = unmarshal(bodyText, mapOf(anyType)) as JsonObject;
       const record = new TestRecord(collection);
       record.set(key, body[key]);
       for (const field of collection.fields) {

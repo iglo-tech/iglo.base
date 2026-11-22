@@ -92,6 +92,11 @@ export const serveFlags: Array<FlagSpec> = [
 
 type AppContextRestart = App["restart"];
 
+// the app a sync callback reads once bootstrap has opened it
+interface SyncAppRef {
+  current?: App;
+}
+
 // the schema file's hooks of the app (D40, D41): see App.schemaLocked and
 // App.collectionsChanged
 export type SchemaHooks = Pick<App, "schemaLocked" | "collectionsChanged">;
@@ -189,7 +194,7 @@ export async function runServeCommand(
     const dbApp = schemaText === undefined ? app : { ...app, automigrate: false };
     // the schema file's sync: the types, and in development the write-back
     // and the file watch (D40); the app is the one bootstrap opens below
-    const syncApp: { current?: App } = {};
+    const syncApp: SyncAppRef = {};
     const sync =
       schemaText === undefined || schemaPath === undefined
         ? undefined
@@ -280,6 +285,7 @@ export async function runServeCommand(
 
     // the restart did not happen: on a shutdown keep the new data dirs, else
     // (no execve) put them back, newest change first; settle every pending call
+    // oxlint-disable-next-line quality/no-known-value-widening -- the restart error is a caught value of any thrown type (ctx.restart), passed on unchanged to pending.failed
     let failure: unknown = new Error("restart is not supported here");
     if (ctx.shutdown.aborted) {
       // a process that is shutting down starts on the new data next time

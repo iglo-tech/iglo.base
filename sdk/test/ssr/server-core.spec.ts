@@ -5,6 +5,7 @@ import { FetchMock, dummyJWT } from "@sdk-test/mocks";
 import { ClientResponseError } from "@sdk/ClientResponseError";
 import { createServerClient, createSuperuserClient, createSessionCache } from "@sdk/ssr/index";
 import type { CookieAdapter, CookieToSet } from "@sdk/ssr/index";
+import type { JsonObject } from "@sdk/tools/json";
 
 const API = "http://localhost:8090";
 // authStore.isValid checks expiry against the real clock, so token times are relative to now.
@@ -49,7 +50,7 @@ function superuserToken(exp: number): string {
   });
 }
 
-function sessionValue(token: string, record: Record<string, unknown> = {}): string {
+function sessionValue(token: string, record: JsonObject = {}): string {
   return JSON.stringify({ token, record });
 }
 
@@ -218,6 +219,7 @@ describe("SSR server core: round-1 regressions", () => {
         clock: () => base * 1000,
       });
       // The app replaces the hook before the sign-in; the SDK must still learn from the response
+      // oxlint-disable-next-line quality/no-unknown-returns -- test hook passes the SDK's raw response data (Loose, any) through unchanged; typing the return would need an assertion
       pb.afterSend = (_response, data): unknown => data;
       await pb.collection("col_as").authWithPassword("a@x.y", "pass");
 

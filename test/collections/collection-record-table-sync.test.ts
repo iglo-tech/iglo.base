@@ -11,6 +11,7 @@ import { findCollectionByNameOrId, reloadCachedCollections } from "@/collections
 import { saveCollection } from "@/collections/collection-save";
 import { syncRecordTableSchema } from "@/collections/collection-record-table-sync";
 import { HashExp, newExp } from "@/db/dbx/expression";
+import type { Row } from "@/db/dbx/query";
 import { hasTable, tableColumns, tableIndexes, tableInfo } from "@/db/table";
 import { EmailField } from "@/fields/email";
 import { SelectField } from "@/fields/select";
@@ -22,7 +23,7 @@ import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown): Error | null {
+function errorOf(fn: () => void): Error | null {
   try {
     fn();
     return null;
@@ -188,7 +189,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
       // ---------------------------------------------------------------
       const info = tableInfo(app.databases, collection.name);
 
-      const tableInfoExpectations: Record<string, string> = {
+      const tableInfoExpectations = {
         select_one: `'[]'`,
         select_many: `''`,
         file_one: `'[]'`,
@@ -196,7 +197,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
         rel_one: `'[]'`,
         rel_many: `''`,
         new_multiple: `'[]'`,
-      };
+      } satisfies Record<string, string>;
       for (const [col, dflt] of Object.entries(tableInfoExpectations)) {
         const row = info.find((r) => r.name === col);
         if (row === undefined) {
@@ -263,7 +264,7 @@ describe("TestSingleVsMultipleValuesNormalization", () => {
           .select(...selectedColumns)
           .from(collection.name)
           .where(new HashExp({ id: s.recordId }))
-          .one<Record<string, unknown>>();
+          .one<Row>();
 
         expect({ recordId: s.recordId, row: result }).toEqual({
           recordId: s.recordId,

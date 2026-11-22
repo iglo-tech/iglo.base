@@ -15,7 +15,7 @@ import type { GoType } from "@/tools/types/go-json";
 type Fields<T> = { [K in keyof T]-?: GoType };
 
 // the zero value of a Go type, as the struct starts with
-function zeroOf(t: GoType): unknown {
+function zeroOf(t: GoType) {
   switch (t.kind) {
     case "string":
       return "";
@@ -30,7 +30,8 @@ function zeroOf(t: GoType): unknown {
   }
 }
 
-function zeros<T>(fields: Fields<T>): Record<string, unknown> {
+function zeros<T>(fields: Fields<T>) {
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go struct value: each field holds a value of its own Go type (its zero value, then the decoded one)
   const out: Record<string, unknown> = {};
   for (const name of Object.keys(fields)) {
     out[name] = zeroOf(fields[name as keyof T]);
@@ -39,7 +40,9 @@ function zeros<T>(fields: Fields<T>): Record<string, unknown> {
 }
 
 // json.Unmarshal of data into a new map[string]any: a null leaves the nil map
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the user document decoded as a JSON object of any kind (rawUser)
 export function decodeRawUser(data: Uint8Array): { [key: string]: unknown } | null {
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the user document decoded as a JSON object of any kind (rawUser)
   return (unmarshal(data, mapOf(anyType)) as { [key: string]: unknown } | undefined) ?? null;
 }
 
@@ -58,7 +61,7 @@ export function decodeFields<T>(data: Uint8Array, fields: Fields<T>): T {
 
 // one JSON value of a Go type, as a member of a nested struct already
 // decoded as `any`
-function valueOf(value: unknown, t: GoType): unknown {
+function valueOf(value: unknown, t: GoType) {
   switch (t.kind) {
     case "any":
       return value;
@@ -102,6 +105,7 @@ export function decodeNested<T>(value: unknown, fields: Fields<T>): T {
   if (typeof value !== "object" || Array.isArray(value)) {
     throw new Error("json: cannot unmarshal into Go struct");
   }
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a nested struct decoded as any: a JSON object of any kind, whose members are read by name
   const members = value as Record<string, unknown>;
   for (const name of Object.keys(fields)) {
     if (Object.hasOwn(members, name)) {

@@ -76,7 +76,7 @@ export function prepareCase(c: Case, ctx: PrepareContext): void {
 }
 
 const hour = 3600;
-const auth = (token: string): Record<string, string> => ({ Authorization: token });
+const auth = (token: string) => ({ Authorization: token });
 const user = auth(usersToken);
 const client = auth(clientsToken);
 const superuser = auth(superuserToken);
@@ -102,7 +102,7 @@ function batch(status: number, ...requests: Array<unknown>): Step {
   return { method: "POST", url: "/api/batch", body: { requests }, status };
 }
 
-const createItem = (title: string, url = "/api/collections/demo2/records"): unknown => ({
+const createItem = (title: string, url = "/api/collections/demo2/records") => ({
   method: "POST",
   url,
   body: { title },

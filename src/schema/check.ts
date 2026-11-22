@@ -105,7 +105,7 @@ export function countBeyondMax(
 
 // The wording of a failure, by the validator's code. A required value reads
 // "required ... empty", as the issue's example reads.
-function failureWording(err: ValidationError): { what: string; tail: string; next: string } {
+function failureWording(err: ValidationError) {
   if (err.code() === "validation_required") {
     return {
       what: "required",

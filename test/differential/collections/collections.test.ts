@@ -57,6 +57,7 @@ import {
 import type { FixtureCopy } from "@test/differential/db/fixture";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 // the hooks start and stop upstream, which is slow on the macOS runners
 const hookTimeout = 60_000;
@@ -114,7 +115,9 @@ async function request(
 }
 
 // the column values the db driver writes for dbExport's values
-function driverValues(exported: Record<string, unknown>): Record<string, unknown> {
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- dbExport's Params (src/db/dbx/query.ts) holds unknown values: each one is passed through unchanged, or as the driver writes it
+function driverValues(exported: Record<string, unknown>) {
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the same passthrough as the exported Params: a value the db driver writes, kept unknown
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(exported)) {
     if (isInstance(FieldsList, v) || isInstance(DateTime, v) || isInstance(JSONRaw, v)) {
@@ -131,19 +134,19 @@ function driverValues(exported: Record<string, unknown>): Record<string, unknown
 }
 
 // the model read from a `_collections` row
-function modelFromRow(row: Record<string, unknown>): Collection {
+function modelFromRow(row: JsonObject): Collection {
   const c = new Collection();
   c.dbScan(row);
   c.postScan();
   return c;
 }
 
-function readRows(file: string): Map<string, Record<string, unknown>> {
+function readRows(file: string): Map<string, JsonObject> {
   // read-write: a read-only connection cannot create the WAL index (-shm)
   // on macOS; this is a temporary copy that no server uses any more
   const db = new Database(file);
   try {
-    const rows = db.query("SELECT * FROM _collections").all() as Array<Record<string, unknown>>;
+    const rows = db.query<JsonObject, []>("SELECT * FROM _collections").all();
     return new Map(rows.map((r) => [r.id as string, r]));
   } finally {
     db.close();
@@ -214,7 +217,7 @@ describe("create through upstream", () => {
 
 // generated values copied from upstream's row: created, updated and
 // (auth) the token secrets
-function withGenerated(model: Collection, row: Record<string, unknown>): Collection {
+function withGenerated(model: Collection, row: JsonObject): Collection {
   model.created = (() => {
     const d = new DateTime();
     d.scan(row.created);
@@ -237,7 +240,7 @@ function withGenerated(model: Collection, row: Record<string, unknown>): Collect
 }
 
 describe("stored _collections rows", () => {
-  let rows: Map<string, Record<string, unknown>>;
+  let rows: Map<string, JsonObject>;
 
   beforeAll(async () => {
     await upstream?.stop();
@@ -254,10 +257,10 @@ describe("stored _collections rows", () => {
     for (const c of created) {
       const row = rows.get(c.id);
       expect(row).toBeDefined();
-      const model = modelFromRow(row as Record<string, unknown>);
+      const model = modelFromRow(row as JsonObject);
       expect({ name: c.name, columns: driverValues(model.dbExport()) }).toEqual({
         name: c.name,
-        columns: row as Record<string, unknown>,
+        columns: row as JsonObject,
       });
       expect({ name: c.name, body: model.string() }).toEqual({ name: c.name, body: c.getBody });
     }
@@ -275,7 +278,7 @@ describe("stored _collections rows", () => {
 
   test("NewBaseCollection matches a minimal create", () => {
     const m = minimal.base as Created;
-    const row = rows.get(m.id) as Record<string, unknown>;
+    const row = rows.get(m.id) as JsonObject;
     const model = withGenerated(newBaseCollection(m.name), row);
     expect(model.id).toBe(m.id);
     expect(driverValues(model.dbExport())).toEqual(row);
@@ -284,7 +287,7 @@ describe("stored _collections rows", () => {
 
   test("NewAuthCollection matches a minimal create", () => {
     const m = minimal.auth as Created;
-    const row = rows.get(m.id) as Record<string, unknown>;
+    const row = rows.get(m.id) as JsonObject;
     const model = withGenerated(newAuthCollection(m.name), row);
     expect(model.id).toBe(m.id);
     expect(driverValues(model.dbExport())).toEqual(row);
@@ -293,7 +296,7 @@ describe("stored _collections rows", () => {
 
   test("NewViewCollection matches a minimal create (id, indexes, options)", () => {
     const m = minimal.view as Created;
-    const row = rows.get(m.id) as Record<string, unknown>;
+    const row = rows.get(m.id) as JsonObject;
     const model = withGenerated(newViewCollection(m.name), row);
     model.viewQuery = minimalCases.view.query;
     expect(model.id).toBe(m.id);
@@ -315,8 +318,8 @@ describe("OAuth2 provider updates through upstream", () => {
     getBody: string;
   }
   const updated: Array<Updated> = [];
-  let before: Map<string, Record<string, unknown>>;
-  let after: Map<string, Record<string, unknown>>;
+  let before: Map<string, JsonObject>;
+  let after: Map<string, JsonObject>;
 
   beforeAll(async () => {
     upstream = await startUpstream({ dataDir });
@@ -373,9 +376,9 @@ describe("OAuth2 provider updates through upstream", () => {
   test("the update unmarshaled into the stored row gives the updated row and GET body", () => {
     for (const [i, c] of oauth2UpdateCases.entries()) {
       const u = updated[i] as Updated;
-      const model = modelFromRow(before.get(u.id) as Record<string, unknown>);
+      const model = modelFromRow(before.get(u.id) as JsonObject);
       model.unmarshalJSON(oauth2UpdatePatchBody(c));
-      const row = after.get(u.id) as Record<string, unknown>;
+      const row = after.get(u.id) as JsonObject;
       withGenerated(model, row);
       expect({ name: c.name, columns: driverValues(model.dbExport()) }).toEqual({
         name: c.name,

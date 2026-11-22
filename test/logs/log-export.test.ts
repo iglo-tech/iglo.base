@@ -42,7 +42,17 @@ const times = [
   Number.NaN,
 ];
 
-function attrValue(r: () => number, depth: number): unknown {
+// an attribute value as the generator builds it: JSON values, undefined included
+type AttrValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Array<AttrValue>
+  | { [key: string]: AttrValue };
+
+function attrValue(r: () => number, depth: number): AttrValue {
   const pick = <T>(a: Array<T>): T => a[Math.floor(r() * a.length)] as T;
   switch (Math.floor(r() * (depth > 2 ? 6 : 9))) {
     case 0:
@@ -59,7 +69,7 @@ function attrValue(r: () => number, depth: number): unknown {
     case 6:
       return [attrValue(r, depth + 1), attrValue(r, depth + 1)];
     default: {
-      const o = Object.create(null) as { [key: string]: unknown };
+      const o = Object.create(null) as { [key: string]: AttrValue };
       for (let i = 0; i < 4; i++) {
         o[pick(["a", "b", "10", "2", "é", "😀", "x y", '"', "__proto__"])] = attrValue(
           r,
@@ -74,7 +84,7 @@ function attrValue(r: () => number, depth: number): unknown {
 test("logDBExport equals the M7.1b export", () => {
   const r = rng(99);
   for (let i = 0; i < 3000; i++) {
-    const data = Object.create(null) as { [key: string]: unknown };
+    const data = Object.create(null) as { [key: string]: AttrValue };
     const n = Math.floor(r() * 12);
     for (let j = 0; j < n; j++) {
       const key = ["type", "execTime", "url", "method", "status", "userAgent", "auth", "k" + j][

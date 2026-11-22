@@ -79,6 +79,7 @@ export class ExcerptModifier implements Modifier {
   //
   // It returns a plain text excerpt/short-description from a formatted
   // html string (non-string values are kept untouched).
+  // oxlint-disable-next-line quality/no-unknown-returns -- a field value of any JSON type; non-string values are returned unchanged
   modify(value: unknown): unknown {
     if (typeof value !== "string") {
       // not a string -> return as it is without applying the modifier

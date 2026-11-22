@@ -11,6 +11,7 @@ import { Browser } from "@test/browser/support";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
 import { startServer, tempDir } from "@test/support/executable";
+import type { Json } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 
 import {
@@ -102,7 +103,7 @@ async function api(
   method: string,
   path: string,
   body?: unknown,
-): Promise<unknown> {
+): Promise<Json> {
   const res = await fetch(`${url}${path}`, {
     method,
     headers: { "Content-Type": "application/json", Authorization: token },
@@ -111,7 +112,7 @@ async function api(
   if (!res.ok) {
     throw new Error(`${method} ${path} on ${url} failed: ${res.status} ${await res.text()}`);
   }
-  return res.json();
+  return res.json() as Promise<Json>;
 }
 
 /** The live collection the browser subscribes to: public, so guests may see its events. */
@@ -165,6 +166,14 @@ function sessionTokenOf(jar: CookieJar): string {
   const json = JSON.parse(decodeURIComponent(raw)) as { token: string };
   return json.token;
 }
+
+type ExampleEnv = {
+  PB_URL: string;
+  PB_PUBLIC_URL: string;
+  PB_READABLE_COOKIE?: string;
+  PB_SUPERUSER_EMAIL?: string;
+  PB_SUPERUSER_PASSWORD?: string;
+};
 
 /**
  * The scenario: sign-in, the protected page, revalidation after a password change, the renew
@@ -378,7 +387,7 @@ for (const app of EXAMPLE_APPS) {
             const pb = await startPocketBase(server, dataDir);
             try {
               await createLiveCollection(pb);
-              const env: Record<string, string> = { PB_URL: pb.url, PB_PUBLIC_URL: pb.url };
+              const env: ExampleEnv = { PB_URL: pb.url, PB_PUBLIC_URL: pb.url };
               if (mode.readable) {
                 env["PB_READABLE_COOKIE"] = "1";
               } else {

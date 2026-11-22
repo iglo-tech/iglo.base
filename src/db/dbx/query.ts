@@ -64,13 +64,17 @@ import type { DB } from "@/db/dbx/db";
 import { execStatements, isSingle, queryStatements, splitStatements } from "@/db/dbx/driver";
 import type { ScriptPart } from "@/db/dbx/driver";
 import { readRows } from "@/db/dbx/rows";
-import type { ReadMode, Rows } from "@/db/dbx/rows";
+import type { ReadMode, ReadValue, Rows } from "@/db/dbx/rows";
 import { isStructModel, scanStruct } from "@/db/dbx/struct";
 import type { StructModel } from "@/db/dbx/struct";
 import { isInstance } from "@/tools/types/is-instance";
 
 // Params represents a list of parameter values to be bound to a SQL statement.
 // The map keys are the parameter names while the map values are the corresponding parameter values.
+// The values are Go `any` values: dbx binds whatever a caller passes, a Go
+// value of any type (a driver.Valuer, a pointer's target, a list, a nil), and
+// the wrappers Float64 and BoundValue mark the ones bound specially.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go `any` parameter values, bound by database/sql with no fixed set of types
 export type Params = Record<string, unknown>;
 
 // Float64 is a param value bound as Go's SQLite driver binds a float64:
@@ -99,11 +103,12 @@ export class BoundValue {
 }
 
 // a result row keyed by column name, as bun:sqlite returns it
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go `any` column values: a row holds what the driver returns for each column, from a query or from rowsFromValues' callers
 export type Row = Record<string, unknown>;
 
 // sets map[key] as an own data property: plain assignment would call the
 // __proto__ setter for the key "__proto__"
-export function setOwn(map: Record<string, unknown>, key: string, value: unknown): void {
+export function setOwn(map: Params, key: string, value: unknown): void {
   if (key === "__proto__") {
     Object.defineProperty(map, key, {
       value,
@@ -117,7 +122,7 @@ export function setOwn(map: Record<string, unknown>, key: string, value: unknown
 }
 
 // Object.assign with setOwn
-export function assignOwn(target: Record<string, unknown>, source: Record<string, unknown>): void {
+export function assignOwn(target: Params, source: Params): void {
   for (const key of Object.keys(source)) {
     setOwn(target, key, source[key]);
   }
@@ -155,7 +160,7 @@ export interface AsyncReader {
     mode: ReadMode,
     deadline: Deadline | null,
     exactIntegers?: boolean,
-  ): Promise<unknown>;
+  ): Promise<ReadValue>;
 }
 
 // context.DeadlineExceeded
@@ -266,9 +271,15 @@ export type ExecHookFunc = (q: Query, op: () => void) => void;
 // AsyncExecHookFunc is ExecHookFunc for the async resolvers.
 export type AsyncExecHookFunc = (q: Query, op: () => Promise<void>) => Promise<void>;
 
+// OneHookOp runs the One() row populate: it returns the scanned model or the row.
+export interface OneHookOp {
+  (b: unknown): StructModel | Row;
+}
+
 // OneHookFunc executes right before the query populate the row result from One() call (aka. op).
 // Its return value is what One() returns.
-export type OneHookFunc = (q: Query, a: unknown, op: (b: unknown) => unknown) => unknown;
+// oxlint-disable-next-line quality/no-unknown-returns -- the hook decides the value One() returns (any value; the caller's T casts it), and One() returns it unchanged
+export type OneHookFunc = (q: Query, a: unknown, op: OneHookOp) => unknown;
 
 // AllHookFunc executes right before the query populate the row result from All() call (aka. op).
 // Its return value is what All() returns.
@@ -276,6 +287,7 @@ export type AllHookFunc = (
   q: Query,
   sliceA: unknown,
   op: (sliceB: unknown) => Array<unknown>,
+  // oxlint-disable-next-line quality/no-unknown-returns -- the hook decides the value All() returns (any value; the caller's T casts it), and All() returns it unchanged
 ) => unknown;
 
 // QueryLogFunc is called each time when performing a SQL query.
@@ -300,6 +312,7 @@ export class Query {
 
   private ctxDeadline: Deadline | null = null;
   private ctxCanceled = false;
+  // oxlint-disable-next-line quality/no-known-value-widening -- the cancel cause is the caller's value as given to withCancelCause (unknown), passed on unchanged
   private ctxCause: unknown = null;
   private exactIntegers = false;
   private execHook: ExecHookFunc | null = null;
@@ -309,6 +322,7 @@ export class Query {
 
   // LastError contains the last error (if any) of the query.
   // LastError is cleared by Execute(), Row(), Rows(), One(), and All().
+  // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; it is returned unchanged
   lastError: unknown = null;
   // QueryLogFunc is called each time when performing a SQL query that returns data.
   queryLogFunc: QueryLogFunc | null;
@@ -364,6 +378,7 @@ export class Query {
 
   // the cause of the query's cancellation (context.Cause), null when the
   // query is not cancelled
+  // oxlint-disable-next-line quality/no-unknown-returns -- the cause is the caller's value as given to withCancelCause (unknown), returned unchanged
   cancelCause(): unknown {
     return this.ctxCanceled ? this.ctxCause : null;
   }
@@ -494,6 +509,7 @@ export class Query {
 
     const start = performance.now();
     let result: ExecResult | null = null;
+    // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; the query log hook receives it unchanged
     let err: unknown = null;
     try {
       const realSql = this.realSql();
@@ -535,8 +551,9 @@ export class Query {
     return result as T;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the One hook may return any value (OneHookFunc), which One() returns unchanged
   private populateOne(row: Row, a: StructModel | undefined): unknown {
-    const op = (b: unknown): unknown => {
+    const op = (b: unknown): StructModel | Row => {
       if (isStructModel(b)) {
         scanStruct(b, row);
         return b;
@@ -550,6 +567,7 @@ export class Query {
   // row objects, or models created by the given factory and populated with
   // the rows. If the query returns no row, the result is an empty array.
   all<T = Row>(factory?: () => StructModel): Array<T> {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the All hook may return any value (AllHookFunc returns unknown) and All returns it unchanged
     let result: unknown = [];
     this.execWrap(() => {
       const rows = this.read("all") as Array<Row>;
@@ -560,6 +578,7 @@ export class Query {
 
   // AllAsync is All, run on the executor's reader when it has one.
   async allAsync<T = Row>(factory?: () => StructModel): Promise<Array<T>> {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the All hook may return any value (AllHookFunc returns unknown) and All returns it unchanged
     let result: unknown = [];
     await this.execWrapAsync(async () => {
       const rows = (await this.readAsync("all")) as Array<Row>;
@@ -568,6 +587,7 @@ export class Query {
     return result as Array<T>;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the All hook may return any value (AllHookFunc returns unknown), which All() returns unchanged
   private populateAll(rows: Array<Row>, factory: (() => StructModel) | undefined): unknown {
     const op = (b: unknown): Array<unknown> => {
       if (typeof b === "function") {
@@ -630,11 +650,11 @@ export class Query {
   // runs the query on this thread and reads its rows; a deadline that
   // passed while they were read fails the query (rows.ts), as an
   // interrupted one
-  private read(mode: ReadMode): unknown {
+  private read(mode: ReadMode): ReadValue {
     return readRows(this.rowsOp(false), mode);
   }
 
-  private async readAsync(mode: ReadMode): Promise<unknown> {
+  private async readAsync(mode: ReadMode): Promise<ReadValue> {
     const reader = this.executor.reader;
     if (reader === undefined) {
       return this.read(mode);
@@ -647,6 +667,7 @@ export class Query {
     this.checkContext();
 
     const start = performance.now();
+    // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; the query log hook receives it unchanged
     let err: unknown = null;
     try {
       const sql = this.realSql() ?? this.rawSql;
@@ -665,6 +686,7 @@ export class Query {
     const deadline = this.ctxDeadline;
 
     const start = performance.now();
+    // oxlint-disable-next-line quality/no-known-value-widening -- holds a caught error, which JavaScript allows to be any value; the query log hook receives it unchanged
     let err: unknown = null;
     try {
       this.checkContext();

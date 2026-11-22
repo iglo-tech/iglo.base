@@ -213,7 +213,7 @@ export function providersFileForm(
   stored: ReadonlyArray<SchemaObject>,
   existing: ReadonlyArray<SchemaObject> | undefined,
   getenv: (name: string) => string,
-): { providers: Array<SchemaObject>; notes: Array<string> } {
+) {
   const notes: Array<string> = [];
   const providers = stored.map((provider) => {
     const name = String(provider.name);

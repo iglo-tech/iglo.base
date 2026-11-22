@@ -471,11 +471,7 @@ class Reader {
     return undefined;
   }
 
-  private rules(
-    node: JSONNode,
-    path: Array<Segment>,
-    defaults: Record<string, string | null>,
-  ): Record<string, string | null> {
+  private rules(node: JSONNode, path: Array<Segment>, defaults: Record<string, string | null>) {
     const rules = { ...defaults };
     if (node.kind !== "object") {
       this.add(path, "must be an object");

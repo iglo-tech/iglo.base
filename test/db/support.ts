@@ -118,11 +118,7 @@ export function tempDir(prefix = "iglo-base-db-"): string {
 // Databases on a new temporary pb_data directory, with a "demo" table in
 // data.db and a "logs" table in auxiliary.db. The busy-retry waits are
 // recorded instead of slept, then passed to onSleep.
-export function openTempDatabases(onSleep: (ms: number) => void = () => {}): {
-  app: Databases;
-  dataDir: string;
-  sleeps: Array<number>;
-} {
+export function openTempDatabases(onSleep: (ms: number) => void = () => {}) {
   const dataDir = tempDir("iglo-base-pb_data-");
   const sleeps: Array<number> = [];
   const app = Databases.open({

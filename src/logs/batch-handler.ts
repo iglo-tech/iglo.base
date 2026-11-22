@@ -16,6 +16,9 @@ export const LevelInfo = 0;
 export const LevelWarn = 4;
 export const LevelError = 8;
 
+// the attributes of a record: slog's values are arbitrary Go values (any), kept
+// as they are or normalized for the JSON log
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- slog attribute values are arbitrary Go values (any); the handler normalizes or marshals each one without a narrower type
 export type LogAttrs = { [key: string]: unknown };
 
 // slog.Group
@@ -211,21 +214,23 @@ function resolveAttr(data: JSONMap<unknown>, key: string, value: unknown): void 
   data[key] = normalizeLogAttrValue(value);
 }
 
-function isPlainMap(value: unknown): value is { [key: string]: unknown } {
+function isPlainMap(value: unknown): value is LogAttrs {
   const proto: unknown = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
 
-function serializeMap(errors: { [key: string]: unknown }): { [key: string]: unknown } {
-  const out: { [key: string]: unknown } = Object.create(null) as { [key: string]: unknown };
+function serializeMap(errors: LogAttrs): LogAttrs {
+  const out: LogAttrs = Object.create(null) as LogAttrs;
   for (const key of Object.keys(errors)) {
     out[key] = serializeLogError(errors[key]);
   }
   return out;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- an attribute value is any value the caller logged; it is returned as it is unless it is a plain map or an error
 function normalizeLogAttrValue(value: unknown): unknown {
   if (value === undefined) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- an attribute value is any value the caller logged (unknown), and the function returns non-plain values unchanged
     return null;
   }
 
@@ -237,13 +242,14 @@ function normalizeLogAttrValue(value: unknown): unknown {
     // check for wrapped validation.Errors
     const ve = errorsAs(value, ValidationErrors);
     if (ve) {
+      // oxlint-disable-next-line quality/no-known-value-widening -- an attribute value is any value the caller logged (unknown); this result is one of several shapes the log stores as-is
       return { data: serializeMap(ve.errors), raw: serializeLogError(value) };
     }
     return serializeLogError(value);
   }
 
   if (typeof value === "object" && value !== null && isPlainMap(value)) {
-    const out: { [key: string]: unknown } = Object.create(null) as { [key: string]: unknown };
+    const out: LogAttrs = Object.create(null) as LogAttrs;
     for (const key of Object.keys(value)) {
       const v = value[key];
       out[key] = v instanceof Error ? serializeLogError(v) : normalizeLogAttrValue(v);
@@ -254,8 +260,10 @@ function normalizeLogAttrValue(value: unknown): unknown {
   return value;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the logged error is any value the caller logged; a non-Error value is returned unchanged
 function serializeLogError(err: unknown): unknown {
   if (err === null || err === undefined) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the error is any value the caller logged (unknown), and a non-Error value is returned unchanged
     return null;
   }
 

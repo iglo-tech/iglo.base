@@ -20,6 +20,7 @@ import type { Record } from "@/records/record-model";
 import { ResponseWriter } from "@/server/router";
 import { newTestRequest } from "@test/support/router";
 import type { TestRequest } from "@test/support/router";
+import type { JsonObject } from "@test/support/json";
 import { openFixtureApp } from "@test/app/app";
 
 // an auth record of a new auth collection with the given name
@@ -43,7 +44,7 @@ const testRequest: TestRequest = {
   body: `{"a":123,"b":"test"}`,
 };
 
-function plain(info: RequestInfo): unknown {
+function plain(info: RequestInfo) {
   return {
     query: info.query,
     headers: info.headers,
@@ -144,7 +145,7 @@ test("RequestInfo.Clone", async () => {
   // modify the clone fields to ensure that it is a shallow copy
   clone.headers.new_header = "test";
   clone.query.new_query = "test";
-  (clone.body as { [key: string]: unknown }).new_body = "test";
+  (clone.body as JsonObject).new_body = "test";
   (clone.auth as Record).id = "user2"; // should be a fresh copy of the record
 
   expect(plain(info)).toEqual({
@@ -189,7 +190,7 @@ describe("snakecase", () => {
   }
 });
 
-async function bodyOf(contentType: string, body: string): Promise<unknown> {
+async function bodyOf(contentType: string, body: string): Promise<Error | RequestInfo["body"]> {
   const e = newEvent({
     method: "POST",
     target: "/",

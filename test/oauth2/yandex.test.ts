@@ -9,6 +9,7 @@ import { Yandex } from "@/oauth2/yandex";
 import { Token } from "@/oauth2/token";
 import { json, stubFetch } from "@test/support/fetch-stub";
 import type { StubbedFetch } from "@test/support/fetch-stub";
+import type { JsonObject } from "@test/support/json";
 
 const infoURL = "https://login.yandex.ru/info";
 
@@ -19,7 +20,7 @@ afterEach(() => {
   stub = undefined;
 });
 
-async function fetchUser(user: { [key: string]: unknown }) {
+async function fetchUser(user: JsonObject) {
   stub?.restore();
   stub = stubFetch({ [infoURL]: () => json(user) });
   return new Yandex().fetchAuthUser(new Token({ accessToken: "abc" }));

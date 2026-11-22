@@ -13,7 +13,7 @@ import { runInTransaction } from "@/db/tx";
 import { getDB, openTempDatabases, tempDir } from "@test/db/support";
 
 // the values upstream's DSN pragmas leave on a connection
-const expectedPragmas: Record<string, unknown> = {
+const expectedPragmas = {
   busy_timeout: 10_000,
   journal_mode: "wal",
   journal_size_limit: 200_000_000,
@@ -21,7 +21,7 @@ const expectedPragmas: Record<string, unknown> = {
   foreign_keys: 1,
   temp_store: 2, // MEMORY
   cache_size: -32_000,
-};
+} satisfies Record<string, string | number>;
 
 describe("open", () => {
   test("creates both files with upstream's pragmas on every builder", () => {

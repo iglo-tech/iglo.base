@@ -131,6 +131,7 @@ export class Part implements IoReader {
     return this.#dispositionParams;
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- the Go error of the header read: an error result is the thrown value, which is unknown in this port
   async populateHeaders(headerSizeLimit: number, headerLimit: number): Promise<unknown> {
     const r = new TextprotoReader(this.mr.bufReader);
     const [header, readErr] = await readMIMEHeader(r, headerSizeLimit, headerLimit);
@@ -424,7 +425,7 @@ export class FileHeader implements MultipartFileHeader {
 
 // os.CreateTemp(os.TempDir(), "multipart-"): a new file opened for
 // writing (0600), named by the prefix and a random number
-function createTemp(): { fd: number; name: string } {
+function createTemp() {
   const dir = tmpdir();
   for (let tries = 0; ; tries++) {
     const name = join(dir, "multipart-" + String(crypto.getRandomValues(new Uint32Array(1))[0]));

@@ -5,6 +5,7 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import type { KeyObject } from "node:crypto";
 
 import { JWK, fetchJWK, validateTokenSignature } from "@/oauth2/jwk";
+import type { JsonObject } from "@test/support/json";
 
 // a clock the test moves by hand (tests never sleep)
 const clock = { now: () => new Date("2026-10-29T12:00:00.000Z") };
@@ -19,7 +20,7 @@ const edPair = generateKeyPairSync("ed25519");
 const edJWK = edPair.publicKey.export({ format: "jwk" });
 
 // a compact JWT: header and payload are signed as base64url text
-function signJWT(header: Record<string, unknown>, key: KeyObject, alg: "EdDSA" | "RS256"): string {
+function signJWT(header: JsonObject, key: KeyObject, alg: "EdDSA" | "RS256"): string {
   const signingInput = b64url(JSON.stringify(header)) + "." + b64url("{}");
   const data = Buffer.from(signingInput);
   const signature = alg === "EdDSA" ? sign(null, data, key) : sign("sha256", data, key);

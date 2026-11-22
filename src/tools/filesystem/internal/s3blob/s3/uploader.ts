@@ -160,6 +160,7 @@ export class Uploader {
   // https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html
   //
   // Returns the abort's error, or null.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the caught error of the abort request, a thrown value of any type, or null
   async #multipartAbort(): Promise<unknown> {
     try {
       const query = encodeQuery([["uploadId", this.#uploadId]]);

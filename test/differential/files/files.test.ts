@@ -42,9 +42,10 @@ import {
 import type { Res, Side } from "@test/differential/files/record-requests";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
-import type { RunningServer } from "@test/support/executable";
+import type { RunResult, RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 // -------------------------------------------------------------------
 // storage trees
@@ -112,16 +113,16 @@ function compareStorage(
 
 // -------------------------------------------------------------------
 
-function items(r: Res): Array<Record<string, unknown>> {
-  return (JSON.parse(r.text) as { items: Array<Record<string, unknown>> }).items;
+function items(r: Res): Array<JsonObject> {
+  return (JSON.parse(r.text) as { items: Array<JsonObject> }).items;
 }
 
-function byId(x: Record<string, unknown>, y: Record<string, unknown>): number {
+function byId(x: JsonObject, y: JsonObject): number {
   return String(x.id).localeCompare(String(y.id));
 }
 
 const roots: Array<string> = [];
-const running: Array<{ stop(): Promise<unknown> }> = [];
+const running: Array<{ stop(): Promise<RunResult | void> }> = [];
 
 afterAll(async () => {
   await Promise.allSettled(running.map((s) => s.stop()));
@@ -136,7 +137,7 @@ function newRoot(): string {
   return root;
 }
 
-async function stop(server: { stop(): Promise<unknown> }): Promise<void> {
+async function stop(server: { stop(): Promise<RunResult | void> }): Promise<void> {
   await server.stop();
   running.splice(running.indexOf(server), 1);
 }
@@ -161,7 +162,7 @@ describe("record files", () => {
     try {
       for (const def of collections) {
         // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
-        const body = JSON.parse(JSON.stringify(def)) as { fields: Array<Record<string, unknown>> };
+        const body = JSON.parse(JSON.stringify(def)) as { fields: Array<Partial<JsonObject>> };
         for (const f of body.fields) {
           if (typeof f.collectionId === "string") {
             f.collectionId = collectionIds.get(f.collectionId);
@@ -255,8 +256,7 @@ describe("record files", () => {
         if (a.status !== 200) {
           diffs.push(`${name}: list ${a.status}`);
         }
-        const key = (x: Record<string, unknown>): string =>
-          pairing.backward.get(String(x.id)) ?? String(x.id);
+        const key = (x: JsonObject): string => pairing.backward.get(String(x.id)) ?? String(x.id);
         compareJSON(
           items(a).toSorted(byId),
           items(b).toSorted((x, y) => key(x).localeCompare(key(y))),
@@ -310,7 +310,7 @@ describe("record files", () => {
       expect(served).toBeGreaterThan(5);
 
       // upstream replaces and deletes iglo.base's files
-      const n5 = ig.records.get("n5") as Record<string, unknown>;
+      const n5 = ig.records.get("n5") as JsonObject;
       const n5Dir = join(fromIglo, "storage", collectionIds.get("fmulti") as string, String(n5.id));
       const oldNames = n5.docs as Array<string>;
       const patch = await req(
@@ -348,8 +348,8 @@ describe("record files", () => {
     running.push(server);
     try {
       const fmulti = collectionIds.get("fmulti") as string;
-      const n1 = up.records.get("n1") as Record<string, unknown>;
-      const n4 = up.records.get("n4") as Record<string, unknown>;
+      const n1 = up.records.get("n1") as JsonObject;
+      const n4 = up.records.get("n4") as JsonObject;
       const n1Dir = join(fromUp, "storage", fmulti, String(n1.id));
       const n4Dir = join(fromUp, "storage", fmulti, String(n4.id));
       const n1Before = tree(n1Dir);

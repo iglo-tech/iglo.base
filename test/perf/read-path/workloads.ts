@@ -6,7 +6,7 @@ import { cpSync, mkdtempSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { Databases } from "@/db/base";
-import type { Params } from "@/db/dbx/query";
+import type { Params, Row } from "@/db/dbx/query";
 
 export type Dataset = "fixture" | "1m";
 export type WorkloadName = "lookup" | "page" | "count" | "slow";
@@ -23,7 +23,7 @@ export interface Target {
   app: Databases;
   workloads: Record<WorkloadName, Workload>;
   // runs one query of the workload in the target's mode
-  run(name: WorkloadName): Promise<unknown> | unknown;
+  run(name: WorkloadName): Array<Row> | Promise<Array<Row>>;
   close(): Promise<void>;
 }
 
@@ -125,12 +125,7 @@ export function percentile(sorted: Array<number>, p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)] as number;
 }
 
-export function summarize(samples: Array<number>): {
-  n: number;
-  p50: number;
-  p95: number;
-  p99: number;
-} {
+export function summarize(samples: Array<number>) {
   const sorted = samples.toSorted((a, b) => a - b);
   return {
     n: sorted.length,

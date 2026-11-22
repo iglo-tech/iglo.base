@@ -12,6 +12,7 @@ import { initProvider } from "@/oauth2/providers";
 import { Token } from "@/oauth2/token";
 import { json, stubFetch } from "@test/support/fetch-stub";
 import type { StubbedFetch } from "@test/support/fetch-stub";
+import type { Json, JsonObject } from "@test/support/json";
 
 const graphURL = "https://graph.microsoft.com/v1.0/me";
 
@@ -22,8 +23,11 @@ const clock = { now: () => new Date(instant) };
 
 const b64url = (value: string): string => Buffer.from(value).toString("base64url");
 
+// a claim set; undefined leaves the claim out of the token (JSON.stringify)
+type Claims = { [key: string]: Json | undefined };
+
 // an id_token with these claims; its signature is not checked
-function idToken(claims: { [key: string]: unknown }): string {
+function idToken(claims: Claims): string {
   return [
     b64url(JSON.stringify({ alg: "RS256", typ: "JWT" })),
     b64url(JSON.stringify(claims)),
@@ -42,9 +46,9 @@ afterEach(() => {
 
 // the Graph user and the token, signed in with the given extra config
 async function signIn(
-  extra: { [key: string]: unknown } | null,
-  claims: { [key: string]: unknown } | null,
-  user: { [key: string]: unknown } = graphUser,
+  extra: JsonObject | null,
+  claims: Claims | null,
+  user: JsonObject = graphUser,
 ): Promise<{ email: string; name: string; id: string }> {
   stub?.restore();
   stub = stubFetch({ [graphURL]: () => json(user) });
@@ -60,7 +64,7 @@ async function signIn(
   return { email: result.email, name: result.name, id: result.id };
 }
 
-const claims = (overrides: { [key: string]: unknown } = {}) => ({
+const claims = (overrides: Claims = {}) => ({
   iat: nowSeconds - 10,
   exp: nowSeconds + 3600,
   email: "jane@example.com",

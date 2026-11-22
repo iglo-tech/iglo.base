@@ -18,7 +18,7 @@ const burstMs = 60_000;
 const rounds = 3;
 const routes = ["/api/collections/demo2/records?perPage=30", "/api/health"];
 
-function status(pid: number): { rss: number; peak: number } {
+function status(pid: number) {
   const text = readFileSync(`/proc/${pid}/status`, "utf8");
   const kb = (key: string): number => Number(new RegExp(`${key}:\\s+(\\d+)`).exec(text)?.[1] ?? 0);
   return { rss: kb("VmRSS") / 1024, peak: kb("VmHWM") / 1024 };

@@ -10,11 +10,13 @@
 // before it; a "batch" step runs its creates in one transaction (upstream:
 // POST /api/batch).
 
+import type { JsonObject } from "@test/support/json";
+
 // a collection created through POST /api/collections (and then PATCHed with
 // `patch`, for fields that refer to the collection itself)
 export interface CollectionCase {
-  body: { [key: string]: unknown };
-  patch?: { [key: string]: unknown };
+  body: JsonObject;
+  patch?: JsonObject;
 }
 
 const autodates = [
@@ -265,12 +267,12 @@ export const tables = [
 export const volatileColumns = ["created", "updated", "tokenKey", "password", "secret"];
 
 export type Step =
-  | { kind: "create"; collection: string; body: { [key: string]: unknown } }
-  | { kind: "update"; collection: string; id: string; body: { [key: string]: unknown } }
+  | { kind: "create"; collection: string; body: JsonObject }
+  | { kind: "update"; collection: string; id: string; body: JsonObject }
   | { kind: "delete"; collection: string; id: string }
   | { kind: "truncate"; collection: string }
   | { kind: "chain"; collection: string; field: string; ids: Array<string> }
-  | { kind: "batch"; creates: Array<{ collection: string; body: { [key: string]: unknown } }> };
+  | { kind: "batch"; creates: Array<{ collection: string; body: JsonObject }> };
 
 const pw = { password: "1234567890", passwordConfirm: "1234567890" };
 
@@ -287,12 +289,12 @@ const gc = (n: number): string => `gc000000000000${n}`;
 const nd = (n: number): string => `nd000000000000${n}`;
 const refs = (record: string) => ({ collectionRef: ids.people, recordRef: record });
 
-const create = (collection: string, body: { [key: string]: unknown }): Step => ({
+const create = (collection: string, body: JsonObject): Step => ({
   kind: "create",
   collection,
   body,
 });
-const update = (collection: string, id: string, body: { [key: string]: unknown }): Step => ({
+const update = (collection: string, id: string, body: JsonObject): Step => ({
   kind: "update",
   collection,
   id,
@@ -302,8 +304,8 @@ const del = (collection: string, id: string): Step => ({ kind: "delete", collect
 const truncate = (collection: string): Step => ({ kind: "truncate", collection });
 
 // a body with a "__proto__" member (an object literal would set the prototype)
-const protoBody = (value: string): { [key: string]: unknown } => {
-  const body: { [key: string]: unknown } = {};
+const protoBody = (value: string): JsonObject => {
+  const body: JsonObject = {};
   Object.defineProperty(body, "__proto__", { value, enumerable: true, writable: true });
   return body;
 };

@@ -224,12 +224,7 @@ export function cropAnchor(img: Raw, width: number, height: number, anchor: Anch
 
 // The crop rectangle cropAndResize takes from the source, for backends that
 // crop before a resize of their own.
-export function fillCrop(
-  srcW: number,
-  srcH: number,
-  dstW: number,
-  dstH: number,
-): { width: number; height: number } {
+export function fillCrop(srcW: number, srcH: number, dstW: number, dstH: number) {
   const srcAspectRatio = srcW / srcH;
   const dstAspectRatio = dstW / dstH;
   if (srcAspectRatio < dstAspectRatio) {

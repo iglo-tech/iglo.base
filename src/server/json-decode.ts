@@ -133,6 +133,7 @@ class Parser {
       if (e === undefined) {
         throw new JsonEOFError(true);
       }
+      // oxlint-disable-next-line quality/no-known-value-widening -- the lookup takes the escape character as a runtime string, guarded by the `in` check below; the open Record lets it index by string without an assertion
       const simple: Record<string, string> = {
         '"': '"',
         "\\": "\\",
@@ -394,8 +395,15 @@ export function isJsonObject(
   );
 }
 
+// GoMap is a Go map[string]T: a map whose values are Go values of its element
+// type T. For map[string]any they are the JSON values unmarshaled into it
+// (toAny) and whatever the caller stored, so no narrower type holds for all T.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]T: the values have the Go element type T, which is not known statically
+export type GoMap = Record<string, unknown>;
+
 // The value as unmarshaled into a Go `any`: objects become plain objects,
 // numbers float64.
+// oxlint-disable-next-line quality/no-unknown-returns -- the value a JSON value unmarshals into a Go any: a number, string, boolean, null, array or map
 export function toAny(value: JsonValue): unknown {
   if (isInstance(JsonNumber, value)) {
     const n = Number(value.literal);
@@ -409,16 +417,17 @@ export function toAny(value: JsonValue): unknown {
     return value.map(toAny);
   }
   if (isJsonObject(value)) {
-    const out: Record<string, unknown> = {};
+    const out: GoMap = {};
     for (const [name, member] of value.members) {
       setOwn(out, name, toAny(member));
     }
+    // oxlint-disable-next-line quality/no-known-value-widening -- toAny returns a Go any: null, bool, string, float64, []any or map[string]any; a union of these would contain GoMap, whose unknown values the dictionary rule rejects in an alias
     return out;
   }
   return value;
 }
 
 // Sets an own enumerable property, also for names like "__proto__".
-export function setOwn(obj: Record<string, unknown>, key: string, value: unknown): void {
+export function setOwn(obj: GoMap, key: string, value: unknown): void {
   Object.defineProperty(obj, key, { value, writable: true, enumerable: true, configurable: true });
 }

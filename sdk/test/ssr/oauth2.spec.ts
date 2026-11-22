@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { dummyJWT } from "@sdk-test/mocks";
 import { ClientResponseError } from "@sdk/ClientResponseError";
+import type { JsonObject } from "@sdk/tools/json";
 import {
   createRequestCookieAdapter,
   createServerClient,
@@ -186,7 +187,9 @@ const popupRequest = (
   token: unknown,
   init: { origin?: string | null; method?: string; cookie?: string } = {},
 ) => {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Partial<Record<"Content-Type" | "Origin" | "Cookie", string>> = {
+    "Content-Type": "application/json",
+  };
   if (init.origin !== null) {
     headers["Origin"] = init.origin ?? APP;
   }
@@ -564,7 +567,7 @@ describe("OAuth2 redirect flow: complete", () => {
     await startRoute(browser, iglo);
     const stored = JSON.parse(
       decodeURIComponent(browser.jar.get("__Host-pb_oauth2") ?? "{}"),
-    ) as Record<string, unknown>;
+    ) as JsonObject;
     browser.jar.set(
       "__Host-pb_oauth2",
       encodeURIComponent(JSON.stringify({ ...stored, redirectTo: "//evil.example" })),

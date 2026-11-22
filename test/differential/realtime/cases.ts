@@ -15,6 +15,7 @@ import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import type { RealtimeStream } from "@test/realtime/client";
 import { events, response, settled } from "@test/realtime/scenario";
 import type { Observation, RealtimeScenario, ScenarioContext } from "@test/realtime/scenario";
+import type { Json, JsonObject } from "@test/support/json";
 
 const user1Id = "4q1xlclmfloku33";
 const user2Id = "oap640cot4yru2s";
@@ -25,10 +26,7 @@ function topic(name: string, options: { query?: object; headers?: object }): str
 }
 
 // rt_posts: public list and view rules, a hidden field and an owner relation
-async function createPosts(
-  ctx: ScenarioContext,
-  rules: Record<string, unknown> = {},
-): Promise<string> {
+async function createPosts(ctx: ScenarioContext, rules: JsonObject = {}): Promise<string> {
   return ctx.createCollection({
     name: "rt_posts",
     type: "base",
@@ -48,7 +46,7 @@ async function createPosts(
 async function post(
   ctx: ScenarioContext,
   id: string,
-  data: Record<string, unknown> = {},
+  data: JsonObject = {},
   collection = "rt_posts",
 ): Promise<Observation> {
   return response(
@@ -97,13 +95,13 @@ function dataKey(e: Observation): string {
 function sortedEvents(list: Array<Observation>): Array<string> {
   return list
     .map((e) => {
-      const data = JSON.parse(e.data as string) as { action: string; record: object };
+      const data = JSON.parse(e.data as string) as { action: string; record: JsonObject };
       return `${e.event as string} ${data.action} ${JSON.stringify(sortKeysDeep(data.record))}`;
     })
     .toSorted();
 }
 
-function sortKeysDeep(v: unknown): unknown {
+function sortKeysDeep(v: Json): Json {
   if (Array.isArray(v)) {
     return v.map(sortKeysDeep);
   }
@@ -111,14 +109,14 @@ function sortKeysDeep(v: unknown): unknown {
     return Object.fromEntries(
       Object.entries(v)
         .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-        .map(([k, x]) => [k, sortKeysDeep(x)]),
+        .map(([k, x]): [string, Json] => [k, sortKeysDeep(x)]),
     );
   }
   return v;
 }
 
 // rt_review: title and text, with the given rules
-async function createReview(ctx: ScenarioContext, rules: Record<string, unknown>): Promise<string> {
+async function createReview(ctx: ScenarioContext, rules: JsonObject): Promise<string> {
   return ctx.createCollection({
     name: "rt_review",
     type: "base",

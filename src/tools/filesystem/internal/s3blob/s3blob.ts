@@ -75,6 +75,7 @@ class driver implements AsyncDriver {
   }
 
   // NormalizeError implements [blob/Driver.NormalizeError].
+  // oxlint-disable-next-line quality/no-unknown-returns -- a caught driver error of any thrown value, returned unchanged unless it is a not-exist error
   normalizeError(err: unknown): unknown {
     // already normalized
     if (errorsIs(err, ErrNotFound)) {

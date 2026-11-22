@@ -13,6 +13,7 @@ import { join } from "node:path";
 
 import { run, startServer, tempDir } from "@test/support/executable";
 import type { RunningServer } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 
 const email = "modes@example.test";
 const password = "1234567890";
@@ -39,7 +40,7 @@ async function newSite(): Promise<Site> {
 }
 
 // the schema file with posts holding the named text fields
-function postsFile(fields: Array<string>, extra: Record<string, unknown> = {}): object {
+function postsFile(fields: Array<string>, extra: JsonObject = {}) {
   return {
     collections: {
       posts: {
@@ -82,7 +83,7 @@ async function api(
   method: string,
   path: string,
   body?: unknown,
-): Promise<{ status: number; json: Record<string, unknown> }> {
+): Promise<{ status: number; json: JsonObject }> {
   const res = await fetch(`${url}${path}`, {
     method,
     headers: { Authorization: token, "Content-Type": "application/json" },
@@ -91,7 +92,7 @@ async function api(
   const text = await res.text();
   return {
     status: res.status,
-    json: text === "" ? {} : (JSON.parse(text) as Record<string, unknown>),
+    json: text === "" ? {} : (JSON.parse(text) as JsonObject),
   };
 }
 
@@ -169,7 +170,7 @@ describe("production mode", () => {
 
       // the health check tells the dashboard why the screens are read-only
       const health = await api(url, token, "GET", "/api/health");
-      expect((health.json.data as Record<string, unknown>).schemaLocked).toBe(true);
+      expect((health.json.data as JsonObject).schemaLocked).toBe(true);
     } finally {
       await server.stop();
     }
@@ -220,10 +221,7 @@ describe("production mode", () => {
       await until(async () => {
         try {
           const health = await api(url, await login(url), "GET", "/api/health");
-          return (
-            health.status === 200 &&
-            (health.json.data as Record<string, unknown>).schemaLocked === true
-          );
+          return health.status === 200 && (health.json.data as JsonObject).schemaLocked === true;
         } catch {
           return false;
         }
@@ -239,14 +237,14 @@ describe("production mode", () => {
     const pulled = await run(["--dir", site.dataDir, "schema", "pull"]);
     expect(pulled.exitCode).toBe(0);
     const file = JSON.parse(pulled.stdout) as {
-      collections: Record<string, Record<string, unknown>>;
+      collections: Record<string, JsonObject>;
     };
     file.collections.posts = {
       type: "base",
       fields: { title: { type: "text" }, image: { type: "file", maxSelect: 1 } },
     };
     // the users sign-in and its first record are open to everyone (the file's default is superusers only)
-    const users = file.collections.users as { rules?: Record<string, unknown> };
+    const users = file.collections.users as { rules?: JsonObject };
     users.rules = { ...users.rules, auth: "", create: "" };
     writeFileSync(site.schemaPath, JSON.stringify(file));
 
@@ -352,7 +350,7 @@ describe("production mode", () => {
       const settings = await api(second.url, second.token, "GET", "/api/settings");
       expect((settings.json.meta as { appName: string }).appName).toBe("Changed by a migration");
       const health = await api(second.url, second.token, "GET", "/api/health");
-      expect((health.json.data as Record<string, unknown>).schemaLocked).toBe(true);
+      expect((health.json.data as JsonObject).schemaLocked).toBe(true);
     } finally {
       await second.server.stop();
     }
@@ -369,7 +367,7 @@ describe("production mode", () => {
         });
         expect(settings.status).toBe(200);
         const health = await api(url, token, "GET", "/api/health");
-        expect((health.json.data as Record<string, unknown>).schemaLocked).toBeUndefined();
+        expect((health.json.data as JsonObject).schemaLocked).toBeUndefined();
       } finally {
         await server.stop();
       }

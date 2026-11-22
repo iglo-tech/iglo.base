@@ -17,6 +17,7 @@ import { openFixtureApp } from "@test/app/app";
 import type { TestApp } from "@test/app/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
+import type { JsonObject } from "@test/support/json";
 import { serveTest } from "@test/support/router";
 
 const key = "abcdabcdabcdabcdabcdabcdabcdabcd";
@@ -56,7 +57,7 @@ async function call(
   target: string,
   body?: string,
   contentType = "application/json",
-): Promise<{ status: number; json: { [key: string]: unknown } }> {
+): Promise<{ status: number; json: JsonObject }> {
   const res = await serveTest(newRouter(app).buildMux(), {
     method,
     target,
@@ -67,7 +68,7 @@ async function call(
   return { status: res.status, json: text === "" ? {} : JSON.parse(text) };
 }
 
-function labels(settings: { [key: string]: unknown }): Array<string> {
+function labels(settings: JsonObject): Array<string> {
   const rateLimits = settings["rateLimits"] as { rules: Array<{ label: string }> };
   return rateLimits.rules.map((r) => r.label);
 }

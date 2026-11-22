@@ -31,6 +31,7 @@ import type { Kind, Site } from "@test/differential/migrations/support";
 import { bindingFiles } from "@test/differential/migrations/bindings";
 import { patternFiles } from "@test/differential/migrations/patterns";
 import { diffSnapshots, takeSnapshot } from "@test/differential/roundtrip/snapshot";
+import type { Json } from "@test/support/json";
 
 const timeout = 120_000;
 
@@ -60,10 +61,7 @@ function userMigrations(s: Site): Array<string> {
   ).map((r) => r.file);
 }
 
-function normalizedRun(
-  s: Site,
-  result: { exitCode: number; stdout: string; stderr: string },
-): unknown {
+function normalizedRun(s: Site, result: { exitCode: number; stdout: string; stderr: string }) {
   return {
     exitCode: result.exitCode,
     stdout: normalizeOutput(result.stdout, s),
@@ -123,13 +121,13 @@ describe("patterns", () => {
       };
       compareTables();
 
-      const params = (s: Site): unknown =>
+      const params = (s: Site): Json =>
         JSON.parse(
           new TextDecoder().decode(
             query<{ value: Uint8Array }>(s, "SELECT value FROM _params WHERE id = 'settings'")[0]
               ?.value,
           ),
-        );
+        ) as Json;
       expect(params(sites[1] as Site)).toEqual(params(sites[0] as Site));
 
       const downs = [];
@@ -171,7 +169,7 @@ describe("patterns", () => {
 
 // Go's json errors word the same failure in two ways, at random.
 function bindingOutput(s: Site, result: { exitCode: number; stdout: string; stderr: string }) {
-  const run = normalizedRun(s, result) as { exitCode: number; stdout: string; stderr: string };
+  const run = normalizedRun(s, result);
   return {
     exitCode: run.exitCode,
     stderr: run.stderr,
@@ -567,7 +565,7 @@ describe("the migrate command", () => {
 
 // the help's other flags, and the files made in the same second, whose
 // order depends on the clock
-function cleanHelp(result: unknown): unknown {
+function cleanHelp(result: unknown) {
   const r = JSON.parse(
     JSON.stringify(result).replaceAll(/(pocketbase|iglo-base) migrate/g, "BIN migrate"),
   ) as { stdout: string; stderr: string };

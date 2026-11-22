@@ -208,6 +208,16 @@ interface Result {
   clientCpuMs: number;
 }
 
+// the document --json writes
+interface BenchOutput {
+  host: string;
+  seconds: number;
+  repeat: number;
+  runs?: Record<string, Record<string, Array<Result>>>;
+  startup?: Record<string, Array<number>>;
+  idle?: Record<string, Array<number>>;
+}
+
 async function run(url: string, w: Workload, clients: number, secs: number): Promise<Result> {
   const latencies: Array<number> = [];
   let errors = 0;
@@ -331,7 +341,7 @@ const median = (xs: Array<number>): number => {
 
 mkdirSync(join(repoRoot, "dist"), { recursive: true });
 const root = mkdtempSync(join(repoRoot, "dist", "compare-"));
-const out: Record<string, unknown> = { host: hostFacts(), seconds, repeat };
+const out: BenchOutput = { host: hostFacts(), seconds, repeat };
 try {
   const base = values.keep ?? join(root, "base", "pb_data");
   if (!existsSync(join(base, "data.db"))) {

@@ -13,6 +13,7 @@ import { startPair } from "@test/differential/serve/pair";
 import type { Pair } from "@test/differential/serve/pair";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
+import type { Json } from "@test/support/json";
 
 const timeout = 60_000;
 
@@ -78,8 +79,8 @@ async function both(
   ]);
 }
 
-function healthData(body: string): unknown {
-  return (JSON.parse(body) as { data: unknown }).data;
+function healthData(body: string): Json {
+  return (JSON.parse(body) as { data: Json }).data;
 }
 
 // header sets, sent as single lines (fetch cannot repeat a header line)
@@ -155,7 +156,7 @@ describe.each(configs)("%s", (name) => {
     });
 
     // the logs are written in batches: poll until the request's row is there
-    const userIP = async (base: string): Promise<unknown> => {
+    const userIP = async (base: string) => {
       for (let i = 0; i < 100; i++) {
         const res = await fetch(
           `${base}/api/logs?filter=${encodeURIComponent(`data.url~'${marker}'`)}`,

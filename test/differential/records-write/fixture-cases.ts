@@ -17,13 +17,7 @@ const demo5 = "/api/collections/demo5/records";
 // filename parameter (Go's ReadForm keeps such parts as form values),
 // after plain value parts
 const emptyFilenameBoundary = "4f6a0e9c2d7b1a5e8c3f6d9b2a7e1c4f8d3b6a9e2c5f8b1d4a7e0c3f6b9d";
-function emptyFilenameParts(
-  parts: Array<[string, string]>,
-  values: Record<string, string> = {},
-): {
-  body: string;
-  headers: Record<string, string>;
-} {
+function emptyFilenameParts(parts: Array<[string, string]>, values: Record<string, string> = {}) {
   let body = "";
   for (const [name, content] of Object.entries(values)) {
     body +=

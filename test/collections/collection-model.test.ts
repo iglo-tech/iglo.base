@@ -20,6 +20,7 @@ import {
   newViewCollection,
 } from "@/collections/collection-model";
 import { findCollectionByNameOrId } from "@/collections/collection-query";
+import type { Row } from "@/db/dbx/query";
 import { BoolField } from "@/fields/bool";
 import { anyType, marshal, unmarshal } from "@/tools/types/go-json";
 import type { DateTime } from "@/tools/types/datetime";
@@ -33,6 +34,7 @@ import {
 } from "@test/differential/collections/cases";
 import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
+import type { JsonObject } from "@test/support/json";
 
 let app: TestCollectionsApp;
 
@@ -571,12 +573,12 @@ test("CollectionIndexHelpers", () => {
 
   checkIndexes(c.indexes, [idx1, idx3]);
 
-  const expectedIndexes: Record<string, string> = {
+  const expectedIndexes = {
     missing: "",
     idx1,
     // the name is case insensitive
     iDX3: idx3,
-  };
+  } satisfies Record<string, string>;
   for (const [key, expectedIdx] of Object.entries(expectedIndexes)) {
     expect({ key, idx: c.getIndex(key) }).toEqual({ key, idx: expectedIdx });
   }
@@ -588,11 +590,7 @@ test("CollectionIndexHelpers", () => {
 
 describe("fixture _collections rows", () => {
   test("every row scans, marshals to JSON and exports its columns back", () => {
-    const rows = app.databases
-      .concurrentDB()
-      .select("*")
-      .from("_collections")
-      .all<Record<string, unknown>>();
+    const rows = app.databases.concurrentDB().select("*").from("_collections").all<Row>();
     expect(rows.length).toBeGreaterThan(10);
 
     for (const row of rows) {
@@ -601,8 +599,8 @@ describe("fixture _collections rows", () => {
       c.postScan();
 
       expect(c.isNew()).toBe(false);
-      const json = unmarshal(c.string(), anyType) as Record<string, unknown>;
-      expect({ name: json.name, type: json.type, id: json.id }).toEqual({
+      const json = unmarshal(c.string(), anyType) as JsonObject;
+      expect<unknown>({ name: json.name, type: json.type, id: json.id }).toEqual({
         name: row.name,
         type: row.type,
         id: row.id,

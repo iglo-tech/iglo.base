@@ -23,7 +23,7 @@ async function rejection(p: Promise<unknown>): Promise<string> {
   }
 }
 
-function deferred(): { promise: Promise<void>; resolve: () => void } {
+function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((r) => {
     resolve = r;

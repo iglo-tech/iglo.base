@@ -2,10 +2,12 @@
 // (records.test.ts). Values are JSON text, so numbers beyond 2^53 and the
 // member order of json values reach upstream exactly as written.
 
+import type { Json } from "@test/support/json";
+
 export interface FieldDef {
   name: string;
   type: string;
-  [setting: string]: unknown;
+  [setting: string]: Json;
 }
 
 // the auth collection: the default auth fields plus a text, a hidden text
@@ -81,9 +83,19 @@ const userNames = [
   "ŁÓDŹ",
 ];
 
+type UserPayloadJson = {
+  email: string;
+  password: string;
+  passwordConfirm: string;
+  emailVisibility: string;
+  verified: string;
+  name: string;
+  secret?: string;
+};
+
 export function userPayloads(): Array<Payload> {
   return userNames.map((name, i): Payload => {
-    const json: Record<string, string> = {
+    const json: UserPayloadJson = {
       email: q(`user${i}@example.com`),
       password: q("1234567890"),
       passwordConfirm: q("1234567890"),
@@ -214,12 +226,31 @@ function pick<T>(list: ReadonlyArray<T>, i: number, step = 1): T {
   return list[(i * step) % list.length] as T;
 }
 
+type BasePayloadJson = {
+  title: string;
+  num: string;
+  int: string;
+  flag: string;
+  mail: string;
+  link: string;
+  body: string;
+  when: string;
+  one: string;
+  many: string;
+  data: string;
+  loc: string;
+  note?: string;
+  secretLoc?: string;
+  owner?: string;
+  team?: string;
+};
+
 // the base records: field values cycle through the edge value lists, with
 // different strides, so that the 50 records combine them differently
 export function allPayloads(userIds: ReadonlyArray<string>): Array<Payload> {
   const out: Array<Payload> = [];
   for (let i = 0; i < 50; i++) {
-    const json: Record<string, string> = {
+    const json: BasePayloadJson = {
       title: q(pick(titles, i)),
       num: pick(nums, i),
       int: pick(ints, i, 3),

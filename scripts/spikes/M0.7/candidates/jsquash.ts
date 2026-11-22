@@ -40,15 +40,16 @@ class ImageDataShim {
     readonly height: number,
   ) {}
 }
-(globalThis as Record<string, unknown>).ImageData ??= ImageDataShim;
+(globalThis as { ImageData?: typeof ImageDataShim }).ImageData ??= ImageDataShim;
 
 const pngWasm = pngWasmFile;
 
 const compile = async (path: string): Promise<WebAssembly.Module> =>
   WebAssembly.compile(await Bun.file(path).arrayBuffer());
 
-let ready: Promise<unknown> | undefined;
-const init = (): Promise<unknown> =>
+// the four init calls resolve to void (the png pair to a tuple of two)
+let ready: Promise<[void, void, [void, void], void]> | undefined;
+const init = () =>
   (ready ??= Promise.all([
     compile(jpegDecWasm).then(initJpegDecode),
     compile(jpegEncWasm).then(initJpegEncode),

@@ -326,7 +326,7 @@ interface field {
 }
 
 // a copy of an instruction's op and links (Go copies the Inst value)
-function snapshot(i: Inst): { op: number; out: number; arg: number } {
+function snapshot(i: Inst) {
   return { op: i.op, out: i.out, arg: i.arg };
 }
 

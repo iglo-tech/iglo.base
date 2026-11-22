@@ -120,6 +120,7 @@ export const internalCustomFieldKeyPrefix = "@pbInternal";
 export interface FieldRecord {
   // GetRaw returns the stored value for key: the id, the changed data or
   // the original data, without getter modifiers.
+  // oxlint-disable-next-line quality/no-unknown-returns -- a stored record value: the value a key holds, of any kind (custom keys are set as they are)
   getRaw(key: string): unknown;
   // SetRaw stores value for key without any normalization.
   setRaw(key: string, value: unknown): void;
@@ -244,6 +245,7 @@ export interface SetterFinder {
   findSetter(key: string): SetterFunc | null;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a field getter returns the field's value, of the kind its field type stores (any value)
 export type GetterFunc = (record: FieldRecord) => unknown;
 
 // GetterFinder defines a field interface for registering custom field

@@ -21,6 +21,7 @@ import { eventually, superuserToken } from "@test/scenarios/cron";
 import { snapshot } from "@test/differential/backups/snapshot";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer, tempDir } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import { centralEntries } from "@test/tools/archive/central-directory";
 import type { CentralEntry } from "@test/tools/archive/central-directory";
@@ -40,7 +41,7 @@ afterAll(() => {
 interface Server {
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 function fixtureCopy(): string {

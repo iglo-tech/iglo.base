@@ -21,6 +21,7 @@ import { run as runIglo, startServer } from "@test/support/executable";
 import { runUpstream } from "@test/differential/db/fixture";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const hookTimeout = 180_000;
 const email = "apply@example.com";
@@ -59,8 +60,8 @@ const postSlugs = {
 async function fileText(): Promise<string> {
   const pulled = await runIglo(["--dir", igloDir, "schema", "pull"]);
   expect(pulled.exitCode).toBe(0);
-  const file = JSON.parse(pulled.stdout) as { collections: Record<string, unknown> };
-  const users = file.collections.users as { fields: Record<string, unknown> };
+  const file = JSON.parse(pulled.stdout) as { collections: Record<string, JsonObject> };
+  const users = file.collections.users as { fields: JsonObject };
   users.fields.nickname = { type: "text", min: 2 };
   file.collections.posts = posts;
   file.collections.members = members;
@@ -93,7 +94,7 @@ async function changeUpstream(): Promise<void> {
   // the users collection, with the nickname appended to its fields
   const users = (await upstreamRequest("GET", "/api/collections/users")).json as {
     id: string;
-    fields: Array<Record<string, unknown>>;
+    fields: Array<JsonObject>;
   };
   const patched = await upstreamRequest("PATCH", `/api/collections/${users.id}`, {
     fields: [...users.fields, { name: "nickname", type: "text", min: 2 }],
@@ -147,7 +148,7 @@ async function changeUpstream(): Promise<void> {
       // the file lists the implied system fields first, then the others, and
       // the stored order is the file's (the API saves the order it is given,
       // as the dashboard does when fields are reordered)
-      const stored = (created.json as { fields: Array<Record<string, unknown>> }).fields;
+      const stored = (created.json as { fields: Array<JsonObject> }).fields;
       const reordered = [
         ...stored.filter((field) => field.system === true),
         ...stored.filter((field) => field.system !== true),
@@ -162,25 +163,26 @@ async function changeUpstream(): Promise<void> {
 
 // the stored schema of a data directory, as its rows: `_collections` (without
 // the times; token secrets as present or absent) and `sqlite_schema`
-function storedSchema(dataDir: string): { collections: Array<unknown>; schema: Array<unknown> } {
+function storedSchema(dataDir: string) {
   const db = new Database(join(dataDir, "data.db"), { readonly: true });
   try {
-    const collections = (
-      db.query("SELECT * FROM _collections ORDER BY name").all() as Array<Record<string, unknown>>
-    ).map((row) => {
-      const { created: _created, updated: _updated, options, fields, ...rest } = row;
-      // every token option has a random secret: its presence is compared
-      const normalized = JSON.parse(String(options ?? "{}")) as Record<string, unknown>;
-      for (const value of Object.values(normalized)) {
-        const option = value as Record<string, unknown> | null;
-        if (option !== null && typeof option === "object" && typeof option.secret === "string") {
-          option.secret = option.secret === "" ? "" : "<secret>";
+    const collections = db
+      .query<JsonObject, []>("SELECT * FROM _collections ORDER BY name")
+      .all()
+      .map((row) => {
+        const { created: _created, updated: _updated, options, fields, ...rest } = row;
+        // every token option has a random secret: its presence is compared
+        const normalized = JSON.parse(String(options ?? "{}")) as JsonObject;
+        for (const value of Object.values(normalized)) {
+          const option = value as JsonObject | null;
+          if (option !== null && typeof option === "object" && typeof option.secret === "string") {
+            option.secret = option.secret === "" ? "" : "<secret>";
+          }
         }
-      }
-      // a view's field ids get a random suffix when they are generated
-      const cloneIDs = String(fields).replaceAll(/_clone_[A-Za-z0-9]{4}/g, "_clone_*");
-      return { ...rest, options: normalized, fields: JSON.parse(cloneIDs) };
-    });
+        // a view's field ids get a random suffix when they are generated
+        const cloneIDs = String(fields).replaceAll(/_clone_[A-Za-z0-9]{4}/g, "_clone_*");
+        return { ...rest, options: normalized, fields: JSON.parse(cloneIDs) };
+      });
     const schema = db
       .query(
         "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",

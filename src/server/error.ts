@@ -18,20 +18,28 @@ export interface SafeErrorItem {
   readonly message: string;
 }
 
+// SafeErrorData is a public error data object: field names to the field's
+// error item (code, message, params) or nested field errors. Its values are
+// the validators' params (Go's map[string]any) and whatever a resolver adds;
+// they are sent in the JSON body as they are, so no narrower type is true.
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any of validator params and resolver output, sent as JSON unchanged
+export type SafeErrorData = Record<string, unknown>;
+
 // SafeErrorParamsResolver defines an optional interface for specifying dynamic error parameters.
 export interface SafeErrorParamsResolver {
-  params(): Record<string, unknown>;
+  params(): SafeErrorData;
 }
 
 // SafeErrorResolver defines an error interface for resolving the public safe error fields.
 export interface SafeErrorResolver {
-  resolve(errData: Record<string, unknown>): unknown;
+  // oxlint-disable-next-line quality/no-unknown-returns -- the resolver's output is Go's any: a map (batch) or any value, sent as JSON unchanged
+  resolve(errData: SafeErrorData): unknown;
 }
 
 // ValidationErrors is ozzo-validation's validation.Errors: a field name →
 // error map that is itself an error.
 export class ValidationErrors extends Error {
-  constructor(readonly errors: Record<string, unknown>) {
+  constructor(readonly errors: Record<string, Error | null>) {
     // Go's validation.Errors is a plain map, created at no cost for every
     // validation run (most runs end without an error). No stack is
     // captured: capturing one dominates the cost of the object and nothing
@@ -66,10 +74,10 @@ export const ErrNoRows = new Error("sql: no rows in result set");
 // ApiError defines the struct for a basic api error response.
 export class ApiError extends Error {
   readonly #rawData: unknown;
-  readonly data: Record<string, unknown>;
+  readonly data: SafeErrorData;
   readonly status: number;
 
-  constructor(status: number, message: string, rawData: unknown, data: Record<string, unknown>) {
+  constructor(status: number, message: string, rawData: unknown, data: SafeErrorData) {
     super(message);
     this.name = "ApiError";
     this.status = status;
@@ -78,6 +86,7 @@ export class ApiError extends Error {
   }
 
   // RawData returns the unformatted error data (could be an internal error, text, etc.)
+  // oxlint-disable-next-line quality/no-unknown-returns -- the unformatted error data (an error, text or any value), kept as the error was created with it
   rawData(): unknown {
     return this.#rawData;
   }
@@ -92,18 +101,19 @@ export class ApiError extends Error {
 
   // the JSON body, with upstream's field order and json.Deterministic
   // (sorted map keys)
-  toJSON(): { data: unknown; message: string; status: number } {
+  toJSON() {
     return { data: sortKeys(this.data), message: this.message, status: this.status };
   }
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a JSON-like value of any kind: object keys are sorted and any other value is returned as it is
 function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
   if (isPlainObject(value)) {
     // null prototype, so that a "__proto__" field name stays a member
-    const sorted = Object.create(null) as Record<string, unknown>;
+    const sorted = Object.create(null) as SafeErrorData;
     for (const key of Object.keys(value).toSorted()) {
       sorted[key] = sortKeys(value[key]);
     }
@@ -329,7 +339,7 @@ export function toApiError(err: Error): ApiError {
 
 // -------------------------------------------------------------------
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+function isPlainObject(value: unknown): value is SafeErrorData {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -337,7 +347,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return proto === Object.prototype || proto === null;
 }
 
-function safeErrorsData(data: unknown): Record<string, unknown> {
+function safeErrorsData(data: unknown): SafeErrorData {
   if (isInstance(ValidationErrors, data)) {
     return resolveSafeErrorsData(data.errors);
   }
@@ -349,7 +359,7 @@ function safeErrorsData(data: unknown): Record<string, unknown> {
     return {}; // not nil to ensure that is json serialized as object
   }
   if (isInstance<Map<unknown, unknown>>(Map, data)) {
-    return resolveSafeErrorsData(Object.fromEntries(data) as Record<string, unknown>);
+    return resolveSafeErrorsData(Object.fromEntries(data) as SafeErrorData);
   }
   if (isPlainObject(data)) {
     return resolveSafeErrorsData(data);
@@ -357,9 +367,9 @@ function safeErrorsData(data: unknown): Record<string, unknown> {
   return {}; // not nil to ensure that is json serialized as object
 }
 
-function resolveSafeErrorsData(data: Record<string, unknown>): Record<string, unknown> {
+function resolveSafeErrorsData(data: SafeErrorData): SafeErrorData {
   // null prototype, so that a "__proto__" field name stays a member
-  const result = Object.create(null) as Record<string, unknown>;
+  const result = Object.create(null) as SafeErrorData;
   for (const [name, err] of Object.entries(data)) {
     if (isNestedError(err)) {
       result[name] = safeErrorsData(err);
@@ -389,8 +399,9 @@ function isSafeErrorItem(err: unknown): err is SafeErrorItem {
 
 // resolveSafeErrorItem extracts from each validation error its
 // public safe error code and message.
+// oxlint-disable-next-line quality/no-unknown-returns -- the resolver's output (any value, sent as JSON unchanged) or the data object
 function resolveSafeErrorItem(err: unknown): unknown {
-  const data: Record<string, unknown> = {};
+  const data: SafeErrorData = {};
 
   if (isSafeErrorItem(err)) {
     // extract the specific error code and message
@@ -415,5 +426,6 @@ function resolveSafeErrorItem(err: unknown): unknown {
     return resolve.call(err, data);
   }
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- the function returns the resolver's result (SafeErrorResolver.resolve returns unknown) or the data object; the caller stores either unchanged
   return data;
 }

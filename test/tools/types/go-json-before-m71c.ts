@@ -34,6 +34,7 @@ import { isInstance } from "@/tools/types/is-instance";
 // ported caller uses.
 
 import { decodeUTF8Bytes } from "@/server/json-decode";
+import type { GoMap } from "@/server/json-decode";
 
 // Values with their own JSON form, as Go's json.Marshaler. The returned
 // text must be one valid JSON value; it is compacted and checked when it is
@@ -86,7 +87,7 @@ export function marshalPartial(err: unknown): string {
   return err instanceof Error ? ((err as { partial?: string }).partial ?? "") : "";
 }
 
-function withPartial(err: unknown, prefix: string, delim: string): unknown {
+function withPartial<T>(err: T, prefix: string, delim: string): T {
   if (err instanceof Error) {
     const child = (err as { partial?: string }).partial ?? "";
     (err as { partial?: string }).partial = child === "" ? prefix : prefix + delim + child;
@@ -883,6 +884,7 @@ export function unmarshal(
   data: string | Uint8Array,
   t: GoType,
   opts: UnmarshalOptions = {},
+  // oxlint-disable-next-line quality/no-unknown-returns -- the decoded value is a Go value of the kind t names (any kind, as Go's interface{} can hold); convert returns it unknown by design
 ): unknown {
   return convert(parse(data, opts), t, undefined, opts.legacy === true);
 }
@@ -893,9 +895,9 @@ export function unmarshal(
 export function unmarshalMapInto(
   data: string | Uint8Array,
   elem: GoType,
-  existing: Record<string, unknown>,
+  existing: GoMap,
   opts: UnmarshalOptions = {},
-): Record<string, unknown> | undefined {
+): GoMap | undefined {
   const node = parse(data, opts);
   if (node === null) {
     return undefined;
@@ -1022,12 +1024,14 @@ function mismatch(node: Node, goType: string): JSONSemanticError {
 // (whose dynamic type is kept when set) and maps (merged into); v1 map
 // entries are always decoded from zero. legacy: v1 semantics, where a
 // member of the wrong type does not stop decoding.
+// oxlint-disable-next-line quality/no-unknown-returns -- the converted value is a Go value of any kind (the return is unknown by design, as the Go value it models)
 function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unknown {
   switch (t.kind) {
     case "any":
       return convertAny(node, existing, legacy);
     case "string":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return "";
       }
       if (typeof node !== "string") {
@@ -1036,6 +1040,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return node;
     case "bool":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return false;
       }
       if (typeof node !== "boolean") {
@@ -1044,6 +1049,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       return node;
     case "float64":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return 0;
       }
       if (!isInstance(NumberNode, node)) {
@@ -1053,6 +1059,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
     case "int":
     case "int64":
       if (node === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- the converted value is a Go value of any kind (the return is unknown by design); this literal is the zero value of the kind
         return 0;
       }
       if (!isInstance(NumberNode, node)) {
@@ -1075,7 +1082,7 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
       }
       const target =
         typeof existing === "object" && existing !== null && !Array.isArray(existing)
-          ? (existing as Record<string, unknown>)
+          ? (existing as GoMap)
           : {};
       return convertObject(node, t.elem, target, "map", legacy);
     }
@@ -1085,10 +1092,10 @@ function convert(node: Node, t: GoType, existing: unknown, legacy: boolean): unk
 function convertObject(
   node: Node,
   elem: GoType,
-  target: Record<string, unknown>,
+  target: GoMap,
   goType: string,
   legacy: boolean,
-): Record<string, unknown> {
+): GoMap {
   if (!isInstance(ObjectNode, node)) {
     throw mismatch(node, goType);
   }
@@ -1119,8 +1126,10 @@ function convertObject(
 // an interface value: a null clears it; a non-nil value keeps its dynamic
 // type (a float64 stays a float64, a map is merged into, a slice is
 // replaced); a nil one gets the natural type of the JSON value
+// oxlint-disable-next-line quality/no-unknown-returns -- the value is a Go interface value (unknown by design, as convert)
 function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
   if (node === null) {
+    // oxlint-disable-next-line quality/no-known-value-widening -- the value is a Go interface value (unknown by design); null clears it
     return null;
   }
   if (existing !== undefined && existing !== null) {
@@ -1141,13 +1150,7 @@ function convertAny(node: Node, existing: unknown, legacy: boolean): unknown {
       return convert(node, sliceOf(anyType), undefined, legacy);
     }
     if (typeof existing === "object") {
-      return convertObject(
-        node,
-        anyType,
-        existing as Record<string, unknown>,
-        "map[string]any",
-        legacy,
-      );
+      return convertObject(node, anyType, existing as GoMap, "map[string]any", legacy);
     }
   }
   if (isInstance(NumberNode, node)) {
@@ -1208,7 +1211,7 @@ function parseInt64(literal: string, goType: string): GoInt {
 }
 
 // Sets an own enumerable property, also for names like "__proto__".
-export function setOwn(target: Record<string, unknown>, name: string, value: unknown): void {
+export function setOwn(target: GoMap, name: string, value: unknown): void {
   Object.defineProperty(target, name, {
     value,
     writable: true,

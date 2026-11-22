@@ -127,7 +127,8 @@ function useTestFs(): () => { readonly dir: string; readonly fsys: System } {
 }
 
 // thrownBy returns the error fn throws (Go's err != nil)
-function thrownBy(fn: () => unknown): unknown {
+// oxlint-disable-next-line quality/no-unknown-returns -- a thrown value can be any JS value; the callers pass it to isNotFound
+function thrownBy(fn: () => void): unknown {
   try {
     fn();
   } catch (error) {

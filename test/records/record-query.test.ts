@@ -47,9 +47,10 @@ import { equalFold } from "@/collections/go-strings";
 
 import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
+import type { JsonObject } from "@test/support/json";
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown): Error | null {
+function errorOf(fn: () => void): Error | null {
   try {
     fn();
     return null;
@@ -112,7 +113,7 @@ describe("TestRecordQueryWithDifferentCollectionValues", () => {
 
   const scenarios: Array<{
     name: string;
-    collection: (app: TestCollectionsApp) => unknown;
+    collection: (app: TestCollectionsApp) => Collection | string | null;
     expectedTotal: number;
     expectError: boolean;
   }> = [
@@ -897,7 +898,7 @@ describe("TestFindAuthRecordByToken", () => {
     "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo";
 
   // a token for claims, signed with a key that does not verify
-  const unsigned = (claims: { [key: string]: unknown }): string =>
+  const unsigned = (claims: JsonObject): string =>
     newJWT(claims, "test", 3600n * 1_000_000_000n, clock);
 
   const scenarios: Array<{

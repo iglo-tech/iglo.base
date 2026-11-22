@@ -124,11 +124,21 @@ class Conn {
   }
 }
 
+// GET /stats of sse-server.ts (the upstream target answers {})
+interface ServerStats {
+  clients?: number;
+  cancelled?: number;
+  enqueueErrors?: number;
+  pending?: number;
+  queuedBytes?: number;
+  minDesiredSize?: number | null;
+}
+
 interface Target {
   server: Server;
   // triggers one broadcast of about `size` bytes
   broadcast(n: number, size: number): Promise<void>;
-  stats(): Promise<unknown>;
+  stats(): Promise<ServerStats>;
   // after PB_CONNECT
   subscribe?(conns: Array<Conn>): Promise<void>;
 }
@@ -168,7 +178,7 @@ async function startBunTarget(root: string, idle: string): Promise<Target> {
       await res.arrayBuffer();
     },
     async stats() {
-      return (await fetch(`${url}/stats`)).json();
+      return (await fetch(`${url}/stats`)).json() as Promise<ServerStats>;
     },
   };
 }

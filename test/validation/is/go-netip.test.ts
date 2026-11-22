@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import { ParseAddr, ParsePrefix, isParseIP } from "@/validation/is/go-netip";
 
 // errorMessage returns the message of the error thrown by fn, or "no error".
-function errorMessage(fn: () => unknown): string {
+function errorMessage(fn: () => void): string {
   try {
     fn();
     return "no error";

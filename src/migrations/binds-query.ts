@@ -17,7 +17,7 @@ import type { CustomMethod } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
 import { toInteger } from "@/migrations/membrane";
-import type { Membrane } from "@/migrations/membrane";
+import type { Membrane, MigrationObject } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { NotRecordQueryError, recordsTarget, recordTarget } from "@/records/record-query";
 import { goQuote } from "@/fields/field";
@@ -47,13 +47,14 @@ interface ShapeField {
   // the name on the model: the mapped name of Go's exported field
   name: string;
   // the zero value of a "go" field
+  // oxlint-disable-next-line quality/no-unknown-returns -- the zero value is a membrane value (toVm) of any JS type
   zero?: () => unknown;
 }
 
 // what a set of a DynamicModel field ignores
 const ignored = Symbol("ignored");
 
-type DynamicModel = Record<string, unknown>;
+type DynamicModel = MigrationObject;
 
 // Rows: the cursor over a query's rows
 export class RowsCursor {
@@ -135,6 +136,7 @@ export class QueryModels {
     return typeof v === "object" && v !== null && this.#arrays.has(v);
   }
 
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns the model given to arrayOf(), a migration file's value of any JS type
   modelOf(v: unknown): unknown {
     return this.#arrays.get(v as object);
   }
@@ -149,7 +151,7 @@ export class QueryModels {
     const model = this.m.vm.object();
 
     for (const key of Object.keys(shape).toSorted()) {
-      const value = (shape as Record<string, unknown>)[key];
+      const value = (shape as MigrationObject)[key];
       const name = convertGoToJSName(key.slice(0, 1).toUpperCase() + key.slice(1));
       const target = this.m.targetOf(value);
       if (isInstance(NullShape, target)) {
@@ -211,7 +213,7 @@ export class QueryModels {
     const shape = this.#shapeOf(dst) as Map<string, ShapeField>;
     for (const [column, field] of shape) {
       if (Object.hasOwn(decoded, column)) {
-        const value = (decoded as Record<string, unknown>)[column];
+        const value = (decoded as MigrationObject)[column];
         const model = dst as DynamicModel;
         model[field.name] = jsonShape(this.m, value, field, `${path}/${column}`, model[field.name]);
       }
@@ -220,6 +222,7 @@ export class QueryModels {
 
   // json.Unmarshal into an arrayOf() of models or of a primitive; newItem
   // makes a model from an item's JSON
+  // oxlint-disable-next-line quality/no-unknown-returns -- an element is a membrane value of any JS type, or the item as it is, stored in the array unchanged
   unmarshalArray(dst: Array<unknown>, decoded: unknown, newItem: (raw: string) => unknown): void {
     if (!Array.isArray(decoded)) {
       throw new Error(`json: cannot unmarshal JSON ${jsonKindOf(decoded)} into Go slice`);
@@ -245,23 +248,23 @@ export class QueryModels {
   }
 
   // the methods of a Query that fill the model they are given
-  queryMethods(): Record<string, CustomMethod> {
+  queryMethods() {
     return {
       ...this.#executors(),
       execute: (q: Query) => this.m.toVm(sqlResult(q.execute())),
-    };
+    } satisfies Record<string, CustomMethod>;
   }
 
-  selectMethods(): Record<string, CustomMethod> {
+  selectMethods() {
     return {
       ...this.#executors(),
       model: (q: SelectQuery, args) => {
         this.#model(q, args[0], args[1]);
       },
-    };
+    } satisfies Record<string, CustomMethod>;
   }
 
-  #executors(): Record<string, CustomMethod> {
+  #executors() {
     return {
       one: (q: SelectQuery | Query, args) => {
         this.#one(q, args[0]);
@@ -289,7 +292,7 @@ export class QueryModels {
           }),
         );
       },
-    };
+    } satisfies Record<string, CustomMethod>;
   }
 
   #one(q: SelectQuery | Query, dst: unknown): void {
@@ -442,6 +445,7 @@ function replaceItems(array: Array<unknown>, items: ReadonlyArray<unknown>): voi
 
 // goja's assignment to a struct field of a DynamicModel. A value goja cannot
 // export to a JSONMap or a JSONArray leaves the field as it is.
+// oxlint-disable-next-line quality/no-unknown-returns -- a field value is the migration file's value as it is, or a membrane value of any JS type
 function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
   if (value === null || value === undefined) {
     return field.nullable ? null : zeroOf(m, field);
@@ -469,7 +473,7 @@ function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
       if (typeof value !== "object" || m.targetOf(value) !== undefined) {
         return ignored;
       }
-      const host = m.toHost(value) as Record<string, unknown>;
+      const host = m.toHost(value) as MigrationObject;
       return m.toVm(new GoJSONMap(Array.isArray(host) ? Object.assign({}, host) : host));
     }
     default:
@@ -477,7 +481,7 @@ function assignShape(m: Membrane, value: unknown, field: ShapeField): unknown {
   }
 }
 
-function zeroOf(m: Membrane, field: ShapeField): unknown {
+function zeroOf(m: Membrane, field: ShapeField) {
   if (field.nullable) {
     return null;
   }
@@ -499,6 +503,7 @@ function zeroOf(m: Membrane, field: ShapeField): unknown {
 }
 
 // an element of a slice of pointers: goja wraps the pointer (GoPointer)
+// oxlint-disable-next-line quality/no-unknown-returns -- a field value is the value as it is, or a membrane value of any JS type
 function pointerTo(m: Membrane, value: unknown, field: ShapeField): unknown {
   const scalar =
     typeof value === "string" || typeof value === "number" || typeof value === "boolean";
@@ -529,6 +534,7 @@ function jsonShape(
   field: ShapeField,
   path: string,
   current: unknown,
+  // oxlint-disable-next-line quality/no-unknown-returns -- a field value is the membrane value of any JS type stored in the model
 ): unknown {
   if (value === null) {
     return zeroOf(m, field);
@@ -590,7 +596,7 @@ function scanValue(
   index: number,
   m: Membrane,
   current: unknown,
-): unknown {
+) {
   const scanError = (reason: string): Error =>
     new Error(`sql: Scan error on column index ${index}, name ${goQuote(column)}: ${reason}`);
   const fail = (from: string, to: string): Error => scanError(`converting ${from} to ${to}`);
@@ -659,10 +665,7 @@ function scanValue(
 }
 
 // sql.Result
-function sqlResult(result: { rowsAffected: number; lastInsertId: number | bigint }): {
-  rowsAffected(): number;
-  lastInsertId(): number;
-} {
+function sqlResult(result: { rowsAffected: number; lastInsertId: number | bigint }) {
   return {
     rowsAffected: () => result.rowsAffected,
     lastInsertId: () => Number(result.lastInsertId),

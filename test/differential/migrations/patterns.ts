@@ -2,7 +2,7 @@
 // prints what it reads with console.log, so both servers' output can be
 // compared. Ids are fixed; nothing here depends on the clock or randomness.
 
-export const patternFiles: Record<string, string> = {
+export const patternFiles = {
   "1000000001_create.js": `
 migrate((app) => {
   const posts = new Collection({
@@ -442,4 +442,4 @@ migrate((app) => {
   console.log(users.authToken.duration, users.passwordAuth.identityFields.join(), users.oauth2.mappedFields.avatarURL, users.mfa.duration, users.otp.length);
 }, null);
 `,
-};
+} satisfies Record<string, string>;

@@ -67,6 +67,10 @@ import type { RuleFunc } from "@/validation/validation";
 import { When } from "@/validation/when";
 import { isInstance } from "@/tools/types/is-instance";
 
+// a JSON value as the decoding gives it, and a JSON object (Go's map[string]any)
+type JsonValue = string | number | boolean | null | Array<JsonValue> | JsonObject;
+type JsonObject = { [key: string]: JsonValue };
+
 // the collection members the two helpers below read
 interface AuthOptionsCollection extends CollectionAuthOptions {
   type: string;
@@ -449,6 +453,7 @@ export class EmailTemplate {
   // ([subject, body]). Go ranges over a map, in random order; here the
   // placeholders are replaced in their insertion order.
   resolve(
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- placeholder values are any value castToString converts (the test and callers pass unknown-valued maps, test/collections/collection-model-auth-options.test.ts); a narrower value type would reject them
     placeholders: Readonly<Record<string, unknown>> | ReadonlyMap<string, unknown> | null,
   ): [subject: string, body: string] {
     let body = this.body;
@@ -926,15 +931,14 @@ export class OAuth2Config {
 
     // unmarshal again but this time into a plain array of objects
     // so that we have only the submitted fields and no zero defaults
-    let plainProviders: Array<Record<string, unknown> | undefined> = [];
+    let plainProviders: Array<JsonObject | undefined> = [];
     unmarshalGoStruct(
       data,
       {
         providers: (raw) =>
           (plainProviders =
-            (decodeAs(raw, sliceOf(mapOf(anyType))) as
-              | Array<Record<string, unknown> | undefined>
-              | undefined) ?? []),
+            (decodeAs(raw, sliceOf(mapOf(anyType))) as Array<JsonObject | undefined> | undefined) ??
+            []),
       },
       () => {},
     );
@@ -1037,6 +1041,7 @@ export class OAuth2ProviderConfig {
   userInfoURL = "";
   displayName = "";
   // null is Go's nil map (marshaled as {} by json v2)
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any of the provider's extra parameters, decoded from JSON and merged by unmarshalMapInto (which returns GoMap, its values unknown); marshaled back unchanged
   extra: Record<string, unknown> | null = null;
 
   constructor(init: Partial<OAuth2ProviderSettings> = {}) {
@@ -1104,7 +1109,7 @@ export class OAuth2ProviderConfig {
         extra: (raw) =>
           (this.extra =
             this.extra === null
-              ? ((decodeAs(raw, mapOf(anyType)) as Record<string, unknown> | undefined) ?? null)
+              ? ((decodeAs(raw, mapOf(anyType)) as JsonObject | undefined) ?? null)
               : (unmarshalMapInto(raw, anyType, this.extra) ?? null)),
       },
       () => Object.assign(this, new OAuth2ProviderConfig()),

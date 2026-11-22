@@ -87,6 +87,7 @@ function jwkOf(raw: unknown): JWK {
   }
   const key = new JWK();
   for (const field of jwkFields) {
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a JSON object (a JWK): one member is read by name, and its value is checked below
     const value = (raw as { [key: string]: unknown })[field];
     if (value !== undefined && value !== null && typeof value !== "string") {
       throw new Error(`json: cannot unmarshal into Go string (JWK ${field})`);
@@ -113,6 +114,7 @@ export async function fetchJWK(
     );
   }
 
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the JWK Set document decoded as a JSON object of any kind
   const jwks = unmarshal(rawBody, mapOf(anyType)) as { [key: string]: unknown } | undefined;
   const rawKeys = jwks?.["keys"] ?? [];
   if (!Array.isArray(rawKeys)) {
@@ -128,6 +130,7 @@ export async function fetchJWK(
   return key;
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- the table is read with the JWT's alg header, an arbitrary string, behind Object.hasOwn; a string key needs the index signature
 const rsaHashes: { [alg: string]: string } = {
   RS256: "sha256",
   RS384: "sha384",

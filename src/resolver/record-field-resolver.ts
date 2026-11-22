@@ -77,6 +77,7 @@ export class RecordFieldResolver implements FieldResolver {
   app: RecordsApp;
   baseCollection: Collection;
   requestInfo: RequestInfo | null;
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a map of the @request.* values: context, method, query and headers as strings, body and auth as JSON-like values of any kind
   staticRequestInfo: { [key: string]: unknown };
   allowedFields: Array<string>;
   joins: Array<Join>;
@@ -273,12 +274,14 @@ export class RecordFieldResolver implements FieldResolver {
 
     // extract value
     let resultVal: unknown;
+    // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type, tested against null only
     let extractErr: unknown = null;
     try {
       resultVal = extractNestedVal(this.staticRequestInfo, ...path);
     } catch (error) {
       extractErr = error;
       this.app.logger.debug("resolveStaticRequestField graceful fallback", { error });
+      // oxlint-disable-next-line quality/no-known-value-widening -- resultVal holds an extracted value of any kind (unknown); null is its fallback
       resultVal = null;
     }
 
@@ -294,6 +297,7 @@ export class RecordFieldResolver implements FieldResolver {
 
     if (resultVal === null || resultVal === undefined) {
       // no further processing is needed...
+      // oxlint-disable-next-line quality/no-known-value-widening -- resultVal holds an extracted value of any kind (unknown); null is its fallback
       resultVal = null;
     } else if (typeof resultVal === "string") {
       // check if it is a number field and explicitly try to cast to
@@ -424,12 +428,14 @@ export function requestAuthRecord(requestInfo: RequestInfo | null): Record | nul
 }
 
 // a request info value as Go's driver binds it: a JS number is a float64
+// oxlint-disable-next-line quality/no-unknown-returns -- a request info value of any kind, bound as it is (a JS number is converted to a Float64)
 export function paramValue(v: unknown): unknown {
   return typeof v === "number" ? new Float64(v) : v;
 }
 
 // the own member of a map (Go's m[key], with the zero value nil)
-export function ownValue(m: { [key: string]: unknown } | null | undefined, key: string): unknown {
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any (the request body or a decoded object): its own member, whose value is a JSON value of any kind
+export function ownValue(m: { [key: string]: unknown } | null | undefined, key: string) {
   if (m === null || m === undefined || !Object.hasOwn(m, key)) {
     return null;
   }
@@ -447,6 +453,7 @@ export function wrapResolverError(prefix: string, err: unknown): Error {
 }
 
 interface MapExtractor {
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any: the members of the extractor's map, values of any kind
   asMap(): { [key: string]: unknown };
 }
 
@@ -456,6 +463,7 @@ function isMapExtractor(v: unknown): v is MapExtractor {
   );
 }
 
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go map[string]any: a plain object whose values are of any kind
 function isPlainMap(v: unknown): v is { [key: string]: unknown } {
   if (typeof v !== "object" || v === null) {
     return false;
@@ -464,6 +472,7 @@ function isPlainMap(v: unknown): v is { [key: string]: unknown } {
   return proto === Object.prototype || proto === null;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the value at the key path: a JSON or Go value of any kind
 export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unknown {
   if (keys.length === 0) {
     throw new Error("at least one key should be provided");
@@ -500,6 +509,7 @@ export function extractNestedVal(rawData: unknown, ...keys: Array<string>): unkn
   throw new Error(`expected map or array, got ${String(rawData)}`);
 }
 
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type, quality/no-unknown-returns -- a Go map[string]any: a plain object whose values are of any kind, and the member at the key path is a value of any kind
 function mapVal(m: { [key: string]: unknown }, keys: Array<string>): unknown {
   const key = keys[0] as string;
   if (!Object.hasOwn(m, key)) {
@@ -518,6 +528,7 @@ function mapVal(m: { [key: string]: unknown }, keys: Array<string>): unknown {
   return extractNestedVal(result, ...keys.slice(1));
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the array member at the key path: a JSON or Go value of any kind
 function arrVal(m: ReadonlyArray<unknown>, keys: Array<string>): unknown {
   const key = keys[0] as string;
   const idx = goAtoi(key);

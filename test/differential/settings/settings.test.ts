@@ -43,9 +43,11 @@ import { send } from "@test/scenarios/runner";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
 import { changeSettings } from "@test/scenarios/settings-prepare";
+import type { RunningServer } from "@test/support/executable";
 import { executable, startServer } from "@test/support/executable";
 import { requireTool, defaultLayout } from "@test/support/reference-tools";
 import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 import { randomString } from "@/tools/security/random";
 
 // starting and stopping the servers is slow on some runners
@@ -53,10 +55,7 @@ const timeout = 120_000;
 
 const encryptionEnv = "IGLO_TEST_SETTINGS_KEY";
 
-interface Server {
-  url: string;
-  stop(): Promise<unknown>;
-}
+type Server = UpstreamServer | RunningServer;
 
 const roots: Array<string> = [];
 const running = new Set<Server>();
@@ -128,7 +127,7 @@ const tokens: Record<Identity, string> = {
 };
 
 function request(c: SettingsCase, body?: string): Scenario {
-  const headers: Record<string, string> = { ...c.headers };
+  const headers = { ...c.headers };
   if (tokens[c.as] !== "") {
     headers["Authorization"] = tokens[c.as];
   }
@@ -573,7 +572,7 @@ describe("stored shapes", () => {
     async () => {
       const source = fixtureCopy((dataDir) =>
         changeSettings(dataDir, (settings) => {
-          (settings as Record<string, unknown>).unknownTop = { nested: [1, 2, { a: null }] };
+          settings.unknownTop = { nested: [1, 2, { a: null }] };
           settings.meta = { ...settings.meta, unknownMeta: "x", appName: "shapes" };
           delete settings.batch;
         }),

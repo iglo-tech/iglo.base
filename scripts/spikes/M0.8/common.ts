@@ -18,14 +18,22 @@ import {
 import { join, resolve } from "node:path";
 
 import { freePort } from "@test/support/executable";
+import type { Json } from "@test/support/json";
 import { defaultLayout, requireTool } from "@test/support/reference-tools";
 
 export const repoRoot = resolve(import.meta.dir, "../../..");
 
+export interface SpikeRoot {
+  root: string;
+  tmp: string;
+  cleanup: () => void;
+}
+
 // A temporary root under the ignored dist/spike-tmp directory.
 // TMPDIR points into it for this process and the servers it starts, so
 // spilled request bodies and builds land on disk and are removed with it.
-export function spikeRoot(name: string): { root: string; tmp: string; cleanup: () => void } {
+// The property form keeps cleanup a plain function, so it can be destructured.
+export function spikeRoot(name: string): SpikeRoot {
   const base = join(repoRoot, "dist", "spike-tmp");
   mkdirSync(base, { recursive: true });
   const root = mkdtempSync(join(base, `${name}-`));
@@ -105,7 +113,7 @@ export function sampler(pid: number, onLowMemory: () => void, intervalMs = 20, m
     get lowMem(): boolean {
       return lowMem;
     },
-    stop(): { peakMiB: number; lowMem: boolean } {
+    stop() {
       clearInterval(timer);
       return { peakMiB: peak, lowMem };
     },
@@ -260,8 +268,10 @@ export function apiClient(url: string) {
     method: string,
     path: string,
     body?: unknown,
-  ): Promise<{ status: number; json: unknown }> => {
-    const headers: Record<string, string> = { "content-type": "application/json" };
+  ): Promise<{ status: number; json: Json }> => {
+    const headers: Partial<Record<"content-type" | "authorization", string>> = {
+      "content-type": "application/json",
+    };
     if (token) {
       headers.authorization = token;
     }
@@ -271,11 +281,11 @@ export function apiClient(url: string) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
-    return { status: res.status, json: text === "" ? null : JSON.parse(text) };
+    return { status: res.status, json: text === "" ? null : (JSON.parse(text) as Json) };
   };
   return {
     call,
-    async must(method: string, path: string, body?: unknown): Promise<unknown> {
+    async must(method: string, path: string, body?: unknown): Promise<Json> {
       const r = await call(method, path, body);
       if (r.status >= 300) {
         throw new Error(`${method} ${path}: ${r.status} ${JSON.stringify(r.json)}`);

@@ -50,6 +50,7 @@ function runInTx(
   }
 
   let txApp: Databases | null = null;
+  // oxlint-disable-next-line quality/no-known-value-widening -- holds the caught transaction error, which JavaScript allows to be any value; it is passed on unchanged
   let txErr: unknown = null;
   let failed = false;
   try {

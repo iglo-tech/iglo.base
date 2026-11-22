@@ -41,6 +41,7 @@ const exitCode = await runCli({
   },
   shutdown: shutdown.signal,
   getenv: (name) => process.env[name] ?? "",
+  // oxlint-disable-next-line quality/no-known-value-widening -- Node types process.env values as string | undefined; the set variables are strings, and the Record is the environ contract (cli/root.ts)
   environ: () => ({ ...process.env }) as Record<string, string>,
   exit: (code) => process.exit(code),
   ui: readUiPack(await Bun.file(uiPack).bytes()),

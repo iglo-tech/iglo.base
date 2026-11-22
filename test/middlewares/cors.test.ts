@@ -85,7 +85,7 @@ const corsHeaders = [
   "access-control-max-age",
 ];
 
-function picked(res: Response): Record<string, string> {
+function picked(res: Response) {
   const out: Record<string, string> = {};
   for (const name of corsHeaders) {
     const v = res.headers.get(name);

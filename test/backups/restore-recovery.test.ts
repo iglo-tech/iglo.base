@@ -32,16 +32,16 @@ afterAll(() => {
   }
 });
 
-const oldFiles: Record<string, string> = {
+const oldFiles = {
   "data.db": "old-data",
   "auxiliary.db": "old-aux",
   "storage/a/file": "old-file",
-};
-const newFiles: Record<string, string> = {
+} satisfies Record<string, string>;
+const newFiles = {
   "data.db": "new-data",
   "auxiliary.db": "new-aux",
   "storage/b/file": "new-file",
-};
+} satisfies Record<string, string>;
 
 function put(dir: string, files: Record<string, string>): void {
   for (const [path, text] of Object.entries(files)) {
@@ -50,7 +50,7 @@ function put(dir: string, files: Record<string, string>): void {
   }
 }
 
-function read(dir: string): Record<string, string> {
+function read(dir: string) {
   const out: Record<string, string> = {};
   const walkDir = (rel: string): void => {
     for (const entry of readdirSync(join(dir, rel), { withFileTypes: true })) {
@@ -84,7 +84,7 @@ interface Layout {
   oldDirEmpty?: boolean;
 }
 
-function build(layout: Layout): { dataDir: string; temp: string; oldDir: string } {
+function build(layout: Layout) {
   const root = tempDir();
   roots.push(root);
   const dataDir = join(root, "pb_data");

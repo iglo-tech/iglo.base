@@ -37,11 +37,7 @@ export async function recordConfirmPasswordReset(e: RequestEvent): Promise<Handl
   }
 
   const form: RecordConfirmPasswordResetForm = { Token: "", Password: "", PasswordConfirm: "" };
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as { [key: string]: unknown },
-    recordConfirmPasswordResetType,
-  );
+  const bindErr = await e.bindBody(form, recordConfirmPasswordResetType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
   }
@@ -106,11 +102,11 @@ const recordConfirmPasswordResetType = structOf([
   },
 ]);
 
-interface RecordConfirmPasswordResetForm {
+type RecordConfirmPasswordResetForm = {
   Token: string;
   Password: string;
   PasswordConfirm: string;
-}
+};
 
 function validateRecordConfirmPasswordResetForm(
   form: RecordConfirmPasswordResetForm,

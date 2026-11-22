@@ -39,8 +39,9 @@ import type { Field } from "@/fields/field";
 import { isExpression } from "@/db/dbx/expression";
 import { BoundValue, Float64 } from "@/db/dbx/query";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
+import type { StructFields } from "@/migrations/json-values";
 import { toInteger } from "@/migrations/membrane";
-import type { Adapter, Membrane } from "@/migrations/membrane";
+import type { Adapter, Membrane, MigrationObject } from "@/migrations/membrane";
 import { Record as RecordModel } from "@/records/record-model";
 import { Settings } from "@/settings/settings-model";
 import { DateTime } from "@/tools/types/datetime";
@@ -62,6 +63,7 @@ export type GoType =
   | { slice: GoType; json?: JSONElemType }
   | { struct: GoClass; make(): object };
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a custom method returns a membrane value of any JS type, which the migration file gets unchanged
 export type CustomMethod = (target: never, args: Array<unknown>, m: Membrane) => unknown;
 
 export type Method = string | CustomMethod;
@@ -119,6 +121,7 @@ export function isField(v: unknown): v is Field {
 }
 
 // the value a Go function gets for one argument
+// oxlint-disable-next-line quality/no-unknown-returns -- converts a migration file's argument to a Go value of the signature's type; the 'any' codes keep an arbitrary host value
 function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: boolean): unknown {
   switch (code) {
     case "s":
@@ -133,6 +136,7 @@ function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: b
       return BigInt(toInteger(v));
     case "B": {
       if (missing || v === null || v === undefined) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- convertArg is recursive (a list argument converts its items) and returns a JS value for a SQL argument of any Go type; no narrower return type is true
         return new Uint8Array();
       }
       const bytes = m.toBytes(v);
@@ -143,6 +147,7 @@ function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: b
     }
     case "E": {
       if (v === undefined || v === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- convertArg is recursive (a list argument converts its items) and returns a JS value for a SQL argument of any Go type; no narrower return type is true
         return null;
       }
       const host = m.toHost(v);
@@ -153,6 +158,7 @@ function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: b
     }
     case "M": {
       if (v === undefined || v === null) {
+        // oxlint-disable-next-line quality/no-known-value-widening -- convertArg is recursive (a list argument converts its items) and returns a JS value for a SQL argument of any Go type; no narrower return type is true
         return null;
       }
       const host = m.toHost(v);
@@ -190,7 +196,7 @@ function convertArg(m: Membrane, code: string, v: unknown, i: number, missing: b
 }
 
 // func(q *dbx.SelectQuery) error
-function filterFunc(m: Membrane, fn: unknown, i: number): unknown {
+function filterFunc(m: Membrane, fn: unknown, i: number) {
   if (fn === undefined || fn === null) {
     return null;
   }
@@ -198,6 +204,7 @@ function filterFunc(m: Membrane, fn: unknown, i: number): unknown {
     throw conversionError(m, i, fn, "func(*dbx.SelectQuery) error");
   }
   return (q: unknown) => {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a migration file's function returns a value of any JS type, which throwResult checks
     throwResult(m, (fn as (q: unknown) => unknown)(m.toVm(q)));
   };
 }
@@ -229,6 +236,7 @@ export function goArgs(
   return converted;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- returns the Go method's result as a membrane value of any JS type
 function goResult(m: Membrane, signature: string, value: unknown): unknown {
   switch (parseSignature(signature).result) {
     case "d":
@@ -246,13 +254,15 @@ export function goMethod(
   target: object,
   key: string,
   method: Method,
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns a Go method whose result is a membrane value of any JS type
 ): (...args: Array<unknown>) => unknown {
   if (typeof method === "function") {
     return (...args) => m.guard(() => method(target as never, args, m));
   }
   return (...args) =>
     m.guard(() => {
-      const fn = (target as Record<string, unknown>)[key] as (...a: Array<unknown>) => unknown;
+      // oxlint-disable-next-line quality/no-unknown-returns -- a Go member is a method of any signature, called with the Go arguments
+      const fn = (target as MigrationObject)[key] as (...a: Array<unknown>) => unknown;
       return goResult(m, method, fn.apply(target, goArgs(m, method, args)));
     });
 }
@@ -325,17 +335,17 @@ function formatDuration(ns: number): string {
   return `${sign}${prefix}${seconds}s`;
 }
 
-const durationUnits: Readonly<Record<string, number>> = {
+const durationUnits = {
   hours: 3.6e12,
   minutes: 6e10,
   seconds: 1e9,
-};
+} satisfies Readonly<Record<string, number>>;
 
 export const durationAdapter: Adapter = {
   get(target, key) {
     const duration = target as GoDuration;
     if (Object.hasOwn(durationUnits, key)) {
-      return () => duration.ns / (durationUnits[key] as number);
+      return () => duration.ns / durationUnits[key as keyof typeof durationUnits];
     }
     switch (key) {
       case "valueOf":
@@ -457,7 +467,7 @@ function unsupported(go: unknown): BoundValue {
 
 // What goja exports and database/sql binds for a value of a migration file.
 // The value stays a param of its Go type, so params() still gives it.
-export function toSql(m: Membrane, v: unknown): unknown {
+export function toSql(m: Membrane, v: unknown) {
   if (typeof v === "function") {
     return unsupported(v);
   }
@@ -497,6 +507,7 @@ export function toSql(m: Membrane, v: unknown): unknown {
 
 // a value of a dbx.HashExp: a plain slice is an IN list, any other value a
 // single parameter (a JSONArray has a driver value, so it is one)
+// oxlint-disable-next-line quality/no-unknown-returns -- returns a SQL value: a BoundValue, a Go value or a membrane value of any JS type
 function hashValue(m: Membrane, v: unknown): unknown {
   const sql = toSql(m, v);
   if (isInstance(BoundValue, sql) && Array.isArray(sql.go) && m.targetOf(v) === undefined) {
@@ -506,20 +517,14 @@ function hashValue(m: Membrane, v: unknown): unknown {
 }
 
 // a map of values for SQL; a map goja holds as a Go value reads as its data
-function sqlParams(
-  m: Membrane,
-  v: unknown,
-  value: (item: unknown) => unknown,
-): Record<string, unknown> {
-  const params: Record<string, unknown> = {};
+// oxlint-disable-next-line quality/no-unknown-returns -- the value callback returns a SQL parameter of any JS type, stored unchanged
+function sqlParams(m: Membrane, v: unknown, value: (item: unknown) => unknown): MigrationObject {
+  const params: MigrationObject = {};
   if (typeof v !== "object" || v === null) {
     return params;
   }
   const target = m.targetOf(v);
-  const source = (isInstance(GoJSONMap, target) ? target.data : (target ?? v)) as Record<
-    string,
-    unknown
-  >;
+  const source = (isInstance(GoJSONMap, target) ? target.data : (target ?? v)) as MigrationObject;
   for (const key of Object.keys(source)) {
     const item = source[key];
     Object.defineProperty(params, key, {
@@ -540,6 +545,7 @@ function sqlParams(
 }
 
 // Go's assignment to a struct field, as goja converts the value.
+// oxlint-disable-next-line quality/no-unknown-returns -- returns a Go value of the field's type; for the 'any' type it is an arbitrary host value
 export function toGo(m: Membrane, value: unknown, type: GoType, current: unknown): unknown {
   if (typeof type === "object") {
     if ("ptr" in type) {
@@ -582,20 +588,18 @@ function assignStruct(
   const fields = type.struct.fields ?? {};
   for (const [name, fieldType] of Object.entries(fields)) {
     const member =
-      typeof value === "object" && value !== null
-        ? (value as Record<string, unknown>)[name]
-        : undefined;
+      typeof value === "object" && value !== null ? (value as MigrationObject)[name] : undefined;
     if (member !== undefined) {
-      const holder = target as Record<string, unknown>;
+      const holder = target as StructFields;
       holder[name] = toGo(m, member, fieldType, holder[name]);
     }
   }
   return target;
 }
 
-// oxlint-disable-next-line quality/no-object-parameters -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers
+// oxlint-disable-next-line quality/no-object-parameters, quality/no-unknown-returns -- the parameter takes a Proxy target or a Go value that is an object by design; a named type would reject the callers; the Go field's value is a membrane value of any JS type
 function fromGo(m: Membrane, holder: object, name: string, type: GoType): unknown {
-  const fields = holder as Record<string, unknown>;
+  const fields = holder as StructFields;
   const value = fields[name];
 
   if (typeof type === "object") {
@@ -662,7 +666,7 @@ export function classAdapter(cls: GoClass, overrides: Partial<Adapter> = {}): Ad
       if (!Object.hasOwn(fields, key)) {
         return false; // goja ignores it
       }
-      const holder = target as Record<string, unknown>;
+      const holder = target as StructFields;
       holder[key] = toGo(m, value, fields[key] as GoType, holder[key]);
       return true;
     },
@@ -672,16 +676,16 @@ export function classAdapter(cls: GoClass, overrides: Partial<Adapter> = {}): Ad
 // -------------------------------------------------------------------
 // the classes
 
-const baseModel: Readonly<Record<string, Method>> = {
+const baseModel = {
   isNew: "",
   lastSavedPK: "",
   markAsNew: "",
   markAsNotNew: "",
   pk: "",
   postScan: "",
-};
+} satisfies Readonly<Record<string, Method>>;
 
-export const recordMethods: Readonly<Record<string, Method>> = {
+export const recordMethods = {
   ...baseModel,
   baseFilesPath: "",
   clone: "",
@@ -735,7 +739,7 @@ export const recordMethods: Readonly<Record<string, Method>> = {
   validatePassword: "s",
   verified: "",
   withCustomData: "b",
-};
+} satisfies Readonly<Record<string, Method>>;
 
 const validate: CustomMethod = (target: { validate(): Error | null }) => {
   const err = target.validate();
@@ -898,7 +902,7 @@ export const geoPointClass: GoClass = {
   methods: { asMap: "", scan: "a", string: "", value: "" },
 };
 
-const fieldMethods: Readonly<Record<string, Method>> = {
+const fieldMethods = {
   columnType: "a",
   getHidden: "",
   getId: "",
@@ -909,7 +913,7 @@ const fieldMethods: Readonly<Record<string, Method>> = {
   setName: "s",
   setSystem: "b",
   type: "",
-};
+} satisfies Readonly<Record<string, Method>>;
 
 // the fields' `(value, error)` results and `error` results
 function tuple(key: "prepareValue" | "driverValue", params: number): CustomMethod {
@@ -948,6 +952,7 @@ const fieldClass = (
   methods: Readonly<Record<string, Method>> = {},
   help = true,
 ): GoClass => {
+  // oxlint-disable-next-line quality/no-known-value-widening -- the own fields are added by Object.assign under names known only at runtime, so the table is an open map of Go type names (help is set by its fixed name above)
   const fields: Record<string, GoType> = {
     name: "string",
     id: "string",
@@ -977,7 +982,7 @@ const driverValue = { driverValue: tuple("driverValue", 1) };
 const maxBody = { calculateMaxBodySize: "" };
 const required = { required: "bool" } as const;
 
-export const fieldClasses: Readonly<Record<string, GoClass>> = {
+export const fieldClasses = {
   number: fieldClass(
     { min: { ptr: "float" }, max: { ptr: "float" }, onlyInt: "bool", ...required },
     setter,
@@ -1038,7 +1043,7 @@ export const fieldClasses: Readonly<Record<string, GoClass>> = {
     { ...multiple, ...driverValue, ...maxBody, ...setter, findGetter: "s" },
   ),
   geoPoint: fieldClass(required),
-};
+} satisfies Readonly<Record<string, GoClass>>;
 
 // types.JSONMap and types.JSONArray
 export const jsonMapClass: GoClass = {
@@ -1047,14 +1052,14 @@ export const jsonMapClass: GoClass = {
   methods: { get: "s", marshalJSON: ":J", scan: "a", set: "s,a", string: "", value: "" },
 };
 
-export const jsonArrayMethods: Readonly<Record<string, Method>> = {
+export const jsonArrayMethods = {
   marshalJSON: ":J",
   scan: "a",
   string: "",
   value: "",
-};
+} satisfies Readonly<Record<string, Method>>;
 
-export const fieldsListMethods: Readonly<Record<string, Method>> = {
+export const fieldsListMethods = {
   add: "...G",
   addAt: "i,...G",
   addMarshaledJSON: "B",
@@ -1071,10 +1076,10 @@ export const fieldsListMethods: Readonly<Record<string, Method>> = {
   string: "",
   unmarshalJSON: "B",
   value: "",
-};
+} satisfies Readonly<Record<string, Method>>;
 
 // the Query and SelectQuery executors are in binds-query.ts
-export const queryMethods: Readonly<Record<string, Method>> = {
+export const queryMethods = {
   bind: "D",
   close: "",
   params: "",
@@ -1083,9 +1088,9 @@ export const queryMethods: Readonly<Record<string, Method>> = {
   withAllHook: "a",
   withExecHook: "a",
   withOneHook: "a",
-};
+} satisfies Readonly<Record<string, Method>>;
 
-export const selectQueryMethods: Readonly<Record<string, Method>> = {
+export const selectQueryMethods = {
   andBind: "D",
   andGroupBy: "...s",
   andHaving: "E",
@@ -1116,14 +1121,14 @@ export const selectQueryMethods: Readonly<Record<string, Method>> = {
   unionAll: "a",
   where: "E",
   withBuildHook: "a",
-};
+} satisfies Readonly<Record<string, Method>>;
 
-export const txMethods: Readonly<Record<string, Method>> = {
+export const txMethods = {
   commit: "",
   rollback: "",
-};
+} satisfies Readonly<Record<string, Method>>;
 
-export const builderMethods: Readonly<Record<string, Method>> = {
+export const builderMethods = {
   addColumn: "s,s,s",
   addForeignKey: "s,s,a,a,s,...s",
   addPrimaryKey: "s,s,...s",
@@ -1151,16 +1156,16 @@ export const builderMethods: Readonly<Record<string, Method>> = {
   truncateTable: "s",
   update: "s,D,E",
   upsert: "s,D,...s",
-};
+} satisfies Readonly<Record<string, Method>>;
 
-export const dbMethods: Readonly<Record<string, Method>> = {
+export const dbMethods = {
   ...builderMethods,
   driverName: "",
   quoteColumnName: "s",
   quoteTableName: "s",
-};
+} satisfies Readonly<Record<string, Method>>;
 
-export const settingsMethods: Readonly<Record<string, Method>> = {
+export const settingsMethods = {
   clone: "",
   isNew: "",
   lastSavedPK: "",
@@ -1171,4 +1176,4 @@ export const settingsMethods: Readonly<Record<string, Method>> = {
   pk: "",
   postScan: "",
   tableName: "",
-};
+} satisfies Readonly<Record<string, Method>>;

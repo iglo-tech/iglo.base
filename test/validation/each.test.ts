@@ -27,36 +27,36 @@ function assertError(expected: string, err: globalThis.Error | null, tag: string
 
 describe("each", () => {
   test.each([
-    { tag: "t1", value: null as unknown, err: "" },
-    { tag: "t2", value: {} as unknown, err: "" },
-    { tag: "t3", value: { key1: "value1", key2: "value2" } as unknown, err: "" },
+    { tag: "t1", value: null, err: "" },
+    { tag: "t2", value: {}, err: "" },
+    { tag: "t3", value: { key1: "value1", key2: "value2" }, err: "" },
     {
       tag: "t4",
-      value: { key1: "", key2: "value2", key3: "" } as unknown,
+      value: { key1: "", key2: "value2", key3: "" },
       err: "key1: cannot be blank; key3: cannot be blank.",
     },
     {
       tag: "t5",
-      value: { key1: { "key1.1": "value1" }, key2: { "key2.1": "value1" } } as unknown,
+      value: { key1: { "key1.1": "value1" }, key2: { "key2.1": "value1" } },
       err: "",
     },
     // a Go nil key is not expressible in an object; the empty string key is
-    { tag: "t6", value: { "": null } as unknown, err: ": cannot be blank." },
-    { tag: "t7", value: {} as unknown, err: "" },
-    { tag: "t8", value: { key1: new Struct("foo") } as unknown, err: "" },
+    { tag: "t6", value: { "": null }, err: ": cannot be blank." },
+    { tag: "t7", value: {}, err: "" },
+    { tag: "t8", value: { key1: new Struct("foo") }, err: "" },
     {
       tag: "t9",
-      value: { "": "", key1: null } as unknown,
+      value: { "": "", key1: null },
       err: ": cannot be blank; key1: cannot be blank.",
     },
-    { tag: "t10", value: ["value1", "value2", "value3"] as unknown, err: "" },
+    { tag: "t10", value: ["value1", "value2", "value3"], err: "" },
     {
       tag: "t11",
-      value: ["", "value2", ""] as unknown,
+      value: ["", "value2", ""],
       err: "0: cannot be blank; 2: cannot be blank.",
     },
-    { tag: "t12", value: [new Struct("foo")] as unknown, err: "" },
-    { tag: "t13", value: [null, null] as unknown, err: "0: cannot be blank; 1: cannot be blank." },
+    { tag: "t12", value: [new Struct("foo")], err: "" },
+    { tag: "t13", value: [null, null], err: "0: cannot be blank; 1: cannot be blank." },
   ])("TestEach $tag", ({ value, err }) => {
     assertError(err, Each(Required).validate(value), "Each");
   });

@@ -108,11 +108,13 @@ import {
   tokenConfig,
   txMethods,
 } from "@/migrations/go-class";
-import type { GoClass, Method } from "@/migrations/go-class";
+import type { GoClass } from "@/migrations/go-class";
 import { GoJSONArray, GoJSONMap } from "@/migrations/json-values";
+import type { StructFields } from "@/migrations/json-values";
 import { convertGoToJSName } from "@/migrations/mapper";
 import { Membrane, pass, toInteger } from "@/migrations/membrane";
-import type { Adapter } from "@/migrations/membrane";
+import type { Adapter, MigrationObject } from "@/migrations/membrane";
+import type { DataMap } from "@/records/record-model";
 import { newRecord, Record as RecordModel } from "@/records/record-model";
 import {
   newAuthToken,
@@ -143,6 +145,7 @@ import type { RateLimitRule, RateLimitsConfig } from "@/settings/settings-model"
 import { equal, hs256, hs512, md5, sha256, sha512 } from "@/tools/security/crypto";
 import { encryptSync } from "@/tools/security/encrypt";
 import { StdEncoding } from "@/tools/security/base64";
+import type { MapClaims } from "@/tools/security/jwt";
 import { newJWT, parseJWT, parseUnverifiedJWT } from "@/tools/security/jwt";
 import {
   pseudorandomString,
@@ -262,7 +265,8 @@ const fieldsListAdapter: Adapter = {
         accepts: (item) => isField(m.toHost(item)),
         methods: {
           keys: Object.keys(fieldsListMethods).toSorted(),
-          get: (key) => goMethod(m, list, key, fieldsListMethods[key] as Method),
+          get: (key) =>
+            goMethod(m, list, key, fieldsListMethods[key as keyof typeof fieldsListMethods]),
         },
       },
       list,
@@ -284,7 +288,8 @@ const jsonArrayAdapter: Adapter = {
           array.elem === stringType ? toGo(m, item, "string", null) : m.toHost(item),
         methods: {
           keys: Object.keys(jsonArrayMethods).toSorted(),
-          get: (key) => goMethod(m, array, key, jsonArrayMethods[key] as Method),
+          get: (key) =>
+            goMethod(m, array, key, jsonArrayMethods[key as keyof typeof jsonArrayMethods]),
         },
       },
       array,
@@ -389,7 +394,7 @@ function fieldAdapters(): (field: Field) => Adapter | undefined {
   return (field) => {
     const type = field.type();
     let adapter = byType.get(type);
-    const cls = fieldClasses[type];
+    const cls = fieldClasses[type as keyof typeof fieldClasses];
     if (adapter === undefined && cls !== undefined) {
       adapter = classAdapter(cls);
       byType.set(type, adapter);
@@ -474,6 +479,7 @@ function structMembers(type: FieldType | undefined): Array<{ name: string; type:
   );
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- a struct's Go methods return Go values of many types, which a migration file receives through toVm
 type StructMethods = Readonly<Record<string, (data: never, args: Array<unknown>) => unknown>>;
 
 const throwing =
@@ -486,7 +492,7 @@ const throwing =
   };
 
 // the Go methods of the settings structs, by the Go name of the member
-const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
+const settingsStructMethods = {
   SMTP: { validate: throwing(validateSMTP) },
   S3: { validate: throwing(validateS3) },
   Backups: { validate: throwing(validateBackups) },
@@ -505,7 +511,7 @@ const settingsStructMethods: Readonly<Record<string, StructMethods>> = {
       new GoDuration(BigInt(rateLimitRuleDurationTime(data)) * 1_000_000n),
     string: (data: RateLimitRule) => rateLimitRuleString(data),
   },
-};
+} satisfies Readonly<Record<string, StructMethods>>;
 
 function structView(
   m: Membrane,
@@ -523,7 +529,7 @@ function structView(
   const member = (key: string): { name: string; type: FieldType } | undefined =>
     members.find(({ name }) => convertGoToJSName(name) === key);
 
-  const read = (key: string): unknown => {
+  const read = (key: string) => {
     const found = member(key);
     if (found !== undefined) {
       return memberView(m, settings, data, found.name, found.type);
@@ -544,6 +550,7 @@ function structView(
   };
 
   const proxy = new Proxy(data, {
+    // oxlint-disable-next-line quality/no-unknown-returns -- a Proxy get returns a membrane value of any JS type (a field, a method or a prototype member)
     get: (t, key): unknown => {
       if (typeof key !== "string") {
         // oxlint-disable-next-line quality/no-reflect-get -- reads a symbol or dynamic key, or uses a getter receiver, that a property access does not reproduce
@@ -563,7 +570,7 @@ function structView(
       if (found === undefined) {
         throw new m.vm.GoError(`Field ${key} not found`);
       }
-      const holder = t as Record<string, unknown>;
+      const holder = t as StructFields;
       holder[found.name] = convertValue(value, found.type, holder[found.name]);
       settings.normalize();
       return true;
@@ -587,8 +594,9 @@ function memberView(
   holder: object,
   name: string,
   type: FieldType,
+  // oxlint-disable-next-line quality/no-unknown-returns -- a struct member is a membrane value of any JS type: a slice view, a struct view or the stored value
 ): unknown {
-  const fields = holder as Record<string, unknown>;
+  const fields = holder as StructFields;
   const value = fields[name];
 
   if (Array.isArray(value) || (typeof type === "object" && type.kind === "slice")) {
@@ -601,19 +609,32 @@ function memberView(
       },
       fromGo: (item) =>
         typeof item === "object" && item !== null
-          ? structView(m, settings, item, element, settingsStructMethods[name])
+          ? structView(
+              m,
+              settings,
+              item,
+              element,
+              settingsStructMethods[name as keyof typeof settingsStructMethods],
+            )
           : item,
       toGo: (item) => convertValue(item, element, undefined),
     });
   }
 
   return typeof value === "object" && value !== null
-    ? structView(m, settings, value, type, settingsStructMethods[name])
+    ? structView(
+        m,
+        settings,
+        value,
+        type,
+        settingsStructMethods[name as keyof typeof settingsStructMethods],
+      )
     : value;
 }
 
 // a migration file's value as the Go type of the settings member: a struct
 // keeps the members the value does not have, as goja's ExportTo does
+// oxlint-disable-next-line quality/no-unknown-returns -- the converted value is a Go field value of the settings type, made from a migration file's value of any JS type
 function convertValue(value: unknown, type: FieldType | undefined, current: unknown): unknown {
   if (typeof value !== "object" || value === null) {
     switch (typeof current) {
@@ -630,7 +651,7 @@ function convertValue(value: unknown, type: FieldType | undefined, current: unkn
   if (type === undefined) {
     return value;
   }
-  const holder: Record<string, unknown> = {
+  const holder = {
     Value: typeof current === "object" && current !== null ? structuredClone(current) : null,
   };
   unmarshalJSON(
@@ -691,7 +712,7 @@ function newSettingsAdapter(): Adapter {
         return pass;
       }
       // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-      const holder = settings.settings as unknown as Record<string, unknown>;
+      const holder = settings.settings as unknown as StructFields;
       holder[found.name] = convertValue(value, found.type, holder[found.name]);
       settings.normalize();
       return true;
@@ -705,7 +726,7 @@ function newSettingsAdapter(): Adapter {
 
 // A global upstream has that iglo.base does not: it exists, and using it
 // fails with an error that names it.
-function missing(m: Membrane, name: string, reason: string, callable: boolean): object {
+function missing(m: Membrane, name: string, reason: string, callable: boolean) {
   const fail = (): never => {
     throw new m.vm.GoError(`${name} is not available in iglo.base migrations: ${reason}`);
   };
@@ -719,12 +740,10 @@ function stringify(v: unknown): string | undefined {
 
 // goja gives only the objects `new` made the constructor's prototype: a field
 // a list holds is no `instanceof TextField`.
-function constructor(
-  m: Membrane,
-  name: string,
-  build: (...args: Array<unknown>) => unknown,
-): unknown {
+// oxlint-disable-next-line quality/no-unknown-returns -- the built value is a membrane value of any JS type (toVm)
+function constructor(m: Membrane, name: string, build: (...args: Array<unknown>) => unknown) {
   const instances = new WeakSet();
+  // oxlint-disable-next-line quality/no-unknown-returns -- returns what build returns: a membrane value of any JS type
   const fn = function (...args: Array<unknown>): unknown {
     const instance = m.guard(() => build(...args));
     if (typeof instance === "object" && instance !== null) {
@@ -758,7 +777,7 @@ const namedFields: ReadonlyArray<readonly [string, string]> = Object.freeze([
 
 // BindCore
 function bindCore(
-  scope: Record<string, unknown>,
+  scope: MigrationObject,
   m: Membrane,
   models: QueryModels,
   blank: WeakSet<object>,
@@ -811,7 +830,7 @@ function bindCore(
     // goja exports only a plain object as a map
     const isMap = !Array.isArray(data) && !models.isDynamicModel(data);
     if (typeof data === "object" && data !== null && isMap && m.targetOf(data) === undefined) {
-      record.load(m.toHost(data) as Record<string, unknown>);
+      record.load(m.toHost(data) as DataMap);
     }
     return m.toVm(record);
   });
@@ -1032,7 +1051,7 @@ function toBytesValue(m: Membrane, raw: unknown): Uint8Array {
 // A namespace object of goja: Go functions with their signatures.
 function goNamespace(
   m: Membrane,
-  functions: Readonly<Record<string, unknown>>,
+  functions: Readonly<MigrationObject>,
   signatures: Readonly<Record<string, string>>,
 ): object {
   const namespace = m.vm.object();
@@ -1045,12 +1064,12 @@ function goNamespace(
 }
 
 // BindDbx
-function bindDbx(scope: Record<string, unknown>, m: Membrane): void {
+function bindDbx(scope: MigrationObject, m: Membrane): void {
   scope.$dbx = goNamespace(
     m,
     {
       exp: newExp,
-      hashExp: (data: Record<string, unknown> | null) => (data === null ? null : new HashExp(data)),
+      hashExp: (data: MigrationObject | null) => (data === null ? null : new HashExp(data)),
       not,
       and,
       or,
@@ -1110,7 +1129,7 @@ function decryptSync(cipherText: string, key: string): string {
 }
 
 // BindSecurity
-function bindSecurity(scope: Record<string, unknown>, m: Membrane, c: BindConfig): void {
+function bindSecurity(scope: MigrationObject, m: Membrane, c: BindConfig): void {
   scope.$security = goNamespace(
     m,
     {
@@ -1133,7 +1152,7 @@ function bindSecurity(scope: Record<string, unknown>, m: Membrane, c: BindConfig
       parseUnverifiedJWT: (token: string) => parseUnverifiedJWT(token, c.clock),
       parseJWT: (token: string, verificationKey: string) =>
         parseJWT(token, verificationKey, c.clock),
-      createJWT: (payload: Record<string, unknown>, signingKey: string, secDuration: number) =>
+      createJWT: (payload: MapClaims, signingKey: string, secDuration: number) =>
         newJWT(payload, signingKey, BigInt(secDuration) * 1_000_000_000n, c.clock),
 
       // encryption
@@ -1161,7 +1180,7 @@ function bindSecurity(scope: Record<string, unknown>, m: Membrane, c: BindConfig
   );
 }
 
-const goErrnoTexts: Readonly<Record<string, string>> = {
+const goErrnoTexts = {
   EACCES: "permission denied",
   EEXIST: "file exists",
   EISDIR: "is a directory",
@@ -1169,7 +1188,7 @@ const goErrnoTexts: Readonly<Record<string, string>> = {
   ENOTDIR: "not a directory",
   ENOTEMPTY: "directory not empty",
   EPERM: "operation not permitted",
-};
+} satisfies Readonly<Record<string, string>>;
 
 // Runs a file operation: its error is os.PathError's text.
 function osCall<T>(op: string, name: string, fn: () => T): T {
@@ -1177,9 +1196,12 @@ function osCall<T>(op: string, name: string, fn: () => T): T {
     return fn();
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code ?? "";
-    throw new Error(`${op} ${name}: ${goErrnoTexts[code] ?? (error as Error).message}`, {
-      cause: error,
-    });
+    throw new Error(
+      `${op} ${name}: ${goErrnoTexts[code as keyof typeof goErrnoTexts] ?? (error as Error).message}`,
+      {
+        cause: error,
+      },
+    );
   }
 }
 
@@ -1192,7 +1214,7 @@ function goFileMode(info: Stats | Dirent): GoFileMode {
   return new GoFileMode(info.isSymbolicLink() ? perm + 2 ** 27 : perm);
 }
 
-function fileInfo(name: string, info: Stats): Record<string, unknown> {
+function fileInfo(name: string, info: Stats) {
   return {
     name: () => path.basename(name),
     size: () => info.size,
@@ -1204,8 +1226,8 @@ function fileInfo(name: string, info: Stats): Record<string, unknown> {
 }
 
 // BindOS: the file and environment helpers; the rest fails with its name
-function bindOS(scope: Record<string, unknown>, m: Membrane, c: BindConfig): void {
-  const os: Record<string, unknown> = {
+function bindOS(scope: MigrationObject, m: Membrane, c: BindConfig): void {
+  const os: MigrationObject = {
     args: [...c.argv],
     exit: (code: number) => c.exit(code),
     getenv: (name: string) => c.getenv(name),
@@ -1307,8 +1329,8 @@ function clean(p: string): string {
 }
 
 // BindFilepath: the pure helpers; the rest fails with its name
-function bindFilepath(scope: Record<string, unknown>, m: Membrane): void {
-  const filepath: Record<string, unknown> = {
+function bindFilepath(scope: MigrationObject, m: Membrane): void {
+  const filepath: MigrationObject = {
     base: (p: string) => (p === "" ? "." : path.posix.basename(p) || "/"),
     clean,
     dir: (p: string) => clean(p.slice(0, p.lastIndexOf("/") + 1)),
@@ -1359,7 +1381,7 @@ function bindFilepath(scope: Record<string, unknown>, m: Membrane): void {
 }
 
 // the globals upstream gives a migration file that iglo.base leaves out
-function bindMissing(scope: Record<string, unknown>, m: Membrane): void {
+function bindMissing(scope: MigrationObject, m: Membrane): void {
   const network = "no network calls run inside a write transaction";
   scope.$http = missing(m, "$http", network, false);
   scope.FormData = missing(m, "FormData", network, true);
@@ -1381,11 +1403,7 @@ function bindMissing(scope: Record<string, unknown>, m: Membrane): void {
 
 // Sets the globals on a context's sandbox object and returns the membrane
 // of that context.
-export function bindAll(
-  sandbox: Record<string, unknown>,
-  context: Context,
-  c: BindConfig,
-): Membrane {
+export function bindAll(sandbox: MigrationObject, context: Context, c: BindConfig): Membrane {
   const m = new Membrane(
     context,
     (target) => (isInstance(RecordSlot, target) ? target.record : target),

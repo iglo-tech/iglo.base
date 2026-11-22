@@ -34,7 +34,7 @@ const resolver: FieldResolver = {
 };
 
 // the built SQL with its random names numbered in order of appearance
-function build(filter: string): { sql: string; params: Params } {
+function build(filter: string) {
   const params: Params = {};
   const expr = filterBuildExpr(filter, resolver, { clock });
   const sql = expr.build(newFromDB(new Database(":memory:"), "sqlite"), params);

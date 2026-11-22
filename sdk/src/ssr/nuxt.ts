@@ -58,8 +58,10 @@ export interface NuxtEvent {
   /** The request headers, as Node has them (`event.node.req.headers`). */
   headers: Record<string, string | Array<string> | undefined>;
   /** Nitro's per-request context: the middleware sets `pb` and `pbBrowserToken` on it. */
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- keeps iglo's published SSR types stable: Nitro's per-request context is an open bag shared with other middleware
   context: Record<string, unknown>;
   /** Reads the request body as JSON. Only the popup route calls it. */
+  // oxlint-disable-next-line quality/no-unknown-returns -- keeps iglo's published SSR types stable: the body is whatever the framework parsed; the SDK only passes it to JSON.stringify, so no narrower type is true
   readBody?: () => Promise<unknown>;
   /** Writes a cookie on the response (h3's `setCookie`). */
   setCookie(name: string, value: string, options: NuxtCookieOptions): void;

@@ -31,18 +31,18 @@ import { join } from "node:path";
 
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
+import type { RunningServer } from "@test/support/executable";
 import { freePort, startServer } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { startUpstream } from "@test/support/upstream";
+import type { UpstreamServer } from "@test/support/upstream";
 
 // starting and stopping the servers is slow on some runners
 const timeout = 120_000;
 
-interface Server {
-  url: string;
-  stop(): Promise<unknown>;
-}
+type Server = UpstreamServer | RunningServer;
 
 const roots: Array<string> = [];
 const running: Array<Server> = [];
@@ -164,11 +164,7 @@ async function patchSettings(url: string, settings: unknown): Promise<void> {
   }
 }
 
-function smtpTo(
-  m: Mailpit | { smtpPort: number },
-  extra: Record<string, unknown> = {},
-  host = "127.0.0.1",
-): unknown {
+function smtpTo(m: Mailpit | { smtpPort: number }, extra: JsonObject = {}, host = "127.0.0.1") {
   return {
     smtp: {
       enabled: true,
@@ -221,7 +217,7 @@ async function onlyMessage(m: Mailpit): Promise<string> {
 
 interface Normalized {
   text: string;
-  claims: Array<Record<string, unknown>>;
+  claims: Array<JsonObject>;
 }
 
 const jwtRegex = /eyJ[\w-]+\.[\w-]+\.[\w-]+/g;
@@ -257,13 +253,10 @@ function normalize(raw: string): Normalized {
 
   text = text.replaceAll(/\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z/g, "<datetime>");
 
-  const claims: Array<Record<string, unknown>> = [];
+  const claims: Array<JsonObject> = [];
   text = text.replaceAll(jwtRegex, (token) => {
     claims.push(
-      JSON.parse(Buffer.from(token.split(".")[1] as string, "base64url").toString()) as Record<
-        string,
-        unknown
-      >,
+      JSON.parse(Buffer.from(token.split(".")[1] as string, "base64url").toString()) as JsonObject,
     );
     return `<token${claims.length - 1}>`;
   });
@@ -277,7 +270,7 @@ function expectSameMessages(up: string, ig: string): void {
   expect(b.text).toBe(a.text);
   expect(b.claims.length).toBe(a.claims.length);
   a.claims.forEach((claims, i) => {
-    const other = b.claims[i] as Record<string, unknown>;
+    const other = b.claims[i] as JsonObject;
     const { exp: expA, ...restA } = claims;
     const { exp: expB, ...restB } = other;
     expect(restB).toEqual(restA);

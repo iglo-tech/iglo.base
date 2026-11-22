@@ -182,13 +182,14 @@ async function bindCollectionBody(
     const payloads = data.get(JSONPayloadKey) ?? [];
     data.delete(JSONPayloadKey);
 
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- a Go struct value: the collection form members, each holding a value of its own Go type (set by the binder)
     const holder: Record<string, unknown> = {};
     for (const [goName, prop] of collectionFormMembers) {
       holder[goName] = collection[prop];
     }
     unmarshalRequestData(data, holder, collectionForm);
     for (const [goName, prop] of collectionFormMembers) {
-      // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+      // oxlint-disable-next-line quality/no-chained-type-assertions, quality/no-unsafe-dictionary-type -- a single assertion does not compile (TS2352): the two types do not overlap, and the Collection's own fields are set by name (a Go struct value); reshaping the types is a separate design change
       (collection as unknown as Record<string, unknown>)[prop] = holder[goName];
     }
 
@@ -447,8 +448,7 @@ async function collectionDryRunView(e: RequestEvent): Promise<Error | undefined>
 
   const form: DryRunViewForm = { Query: "" };
 
-  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-  const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, dryRunViewFormType);
+  const bindErr = await e.bindBody(form, dryRunViewFormType);
   if (bindErr) {
     return firstApiError(
       bindErr,
@@ -490,9 +490,9 @@ const dryRunViewFormType = structOf([
   { name: "Query", type: "string", tags: { form: "query", json: "query" } },
 ]);
 
-interface DryRunViewForm {
+type DryRunViewForm = {
   Query: string;
-}
+};
 
 function validateDryRunViewForm(form: DryRunViewForm): Error | null {
   return ValidateStruct(Field("query", form.Query, Required, Length(0, 5000)));

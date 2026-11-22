@@ -92,6 +92,7 @@ export function bindRecordAuthApi(
 // "collection" value, or the 404 error.
 export function findAuthCollection(e: RequestEvent): Collection | ApiError {
   let collection: Collection | undefined;
+  // oxlint-disable-next-line quality/no-known-value-widening -- err holds the value a catch clause received, and a thrown value can be any JS value
   let err: unknown = null;
   try {
     collection = findCachedCollectionByNameOrId(e.app, e.request.pathValue("collection"));

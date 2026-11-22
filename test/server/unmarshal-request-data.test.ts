@@ -22,6 +22,7 @@ import {
   unmarshalRequestData,
 } from "@/server/unmarshal-request-data";
 import type { MapRef, RequestData, StructType } from "@/server/unmarshal-request-data";
+import type { JsonObject } from "@test/support/json";
 
 const timeType = textOf((text) => {
   const d = new Date(text);
@@ -360,7 +361,7 @@ test("nil data leaves the destination untouched", () => {
 test("map destination infers values from the data", () => {
   const ref: MapRef = { map: {} };
   unmarshalRequestData(mapData, ref);
-  const dst = ref.map as Record<string, unknown>;
+  const dst = ref.map as JsonObject;
 
   // -0 is checked separately: toEqual does not tell -0 and 0 apart
   const number4 = dst.number4 as Array<number>;
@@ -408,7 +409,7 @@ test("map destination infers values from the data", () => {
 });
 
 test("valid struct destination (all fields)", () => {
-  const dst: Record<string, unknown> = {};
+  const dst = {};
   unmarshalRequestData(structData, dst, testStruct);
 
   expect(dst).toEqual({
@@ -534,7 +535,7 @@ test.each<[string, RequestData]>([
 });
 
 test("custom tagKey", () => {
-  const dst: Record<string, unknown> = {};
+  const dst = {};
   unmarshalRequestData(
     { tag1: ["a"], tag2: ["b"], tag3: ["c"], Item: ["d"] },
     dst,
@@ -547,7 +548,7 @@ test("custom tagKey", () => {
 });
 
 test("custom prefix", () => {
-  const dst: Record<string, unknown> = {};
+  const dst = {};
   unmarshalRequestData(
     { "test.A": ["1"], A: ["2"], "test.alias": ["3"] },
     dst,
@@ -574,7 +575,7 @@ test("unexported fields are not set", () => {
     },
   ]);
 
-  const dst: Record<string, unknown> = {};
+  const dst = {};
   unmarshalRequestData(
     {
       Exported: ["test"], // just for reference
@@ -598,7 +599,8 @@ test("signed NaN is rejected in float fields", () => {
     expect(() => unmarshalRequestData({ F: [value] }, {}, type)).toThrow("invalid syntax");
   }
   for (const value of ["NaN", "nan", "NAN"]) {
-    const dst: Record<string, unknown> = {};
+    type FloatDst = { F?: number };
+    const dst: FloatDst = {};
     unmarshalRequestData({ F: [value] }, dst, type);
     expect(dst.F).toBeNaN();
   }
@@ -613,7 +615,7 @@ test("integers beyond 2^53 stay exact", () => {
     { name: "S", type: "int64", tags: { json: "s" } },
   ]);
 
-  const dst: Record<string, unknown> = {};
+  const dst = {};
   unmarshalRequestData(
     { I: ["-9223372036854775808"], U: ["18446744073709551615"], S: ["123"] },
     dst,
@@ -621,7 +623,7 @@ test("integers beyond 2^53 stay exact", () => {
   );
   expect(dst).toEqual({ I: -9_223_372_036_854_775_808n, U: 18_446_744_073_709_551_615n, S: 123 });
 
-  const fromJSON: Record<string, unknown> = {};
+  const fromJSON = {};
   unmarshalRequestData(
     { "@jsonPayload": ['{"i":9007199254740993,"u":9007199254740991,"s":-1}'] },
     fromJSON,

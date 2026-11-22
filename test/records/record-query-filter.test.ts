@@ -36,6 +36,7 @@ import { Store } from "@/tools/store/store";
 import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import type { JsonObject } from "@test/support/json";
 
 // a copy of the vendored fixture with a read worker pool
 function openPooledApp(): RecordsApp & { cleanup(): Promise<void> } {
@@ -72,7 +73,7 @@ async function onPool<T>(app: RecordsApp, read: () => Promise<T>): Promise<T> {
 }
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown): unknown {
+function errorOf(fn: () => void) {
   try {
     fn();
     return null;
@@ -81,7 +82,8 @@ function errorOf(fn: () => unknown): unknown {
   }
 }
 
-async function asyncErrorOf(fn: () => Promise<unknown>): Promise<unknown> {
+// oxlint-disable-next-line quality/no-unknown-returns -- resolves with the caught value of any thrown type (null when fn does not throw); checkRecords and checkRecord take it as unknown
+async function asyncErrorOf(fn: () => Promise<void>): Promise<unknown> {
   try {
     await fn();
     return null;
@@ -120,7 +122,7 @@ function checkRecord(
   expect(record?.id).toBe(expectRecordId);
 }
 
-function requestInfo(init: { auth?: Record; body?: { [key: string]: unknown } }): RequestInfo {
+function requestInfo(init: { auth?: Record; body?: JsonObject }): RequestInfo {
   const info = new RequestInfo();
   info.auth = init.auth;
   if (init.body !== undefined) {
@@ -351,7 +353,7 @@ describe("TestCanAccessRecord", () => {
   type Scenario = [
     string,
     "superuser" | "user" | null,
-    { [key: string]: unknown } | undefined,
+    JsonObject | undefined,
     string | null,
     boolean,
     boolean,

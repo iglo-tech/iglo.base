@@ -29,7 +29,7 @@ const searchItems = (): Array<unknown> => [
   { a: 22, b: 22, c: "test2" },
 ];
 
-test.each<[string, () => unknown, string, boolean, string]>([
+test.each<[string, () => object | string, string, boolean, string]>([
   ["empty fields", () => ({ a: 1, b: 2, c: "test" }), "", false, `{"a":1,"b":2,"c":"test"}`],
   ["missing fields", () => ({ a: 1, b: 2, c: "test" }), "missing", false, `{}`],
   ["non map data", () => "test", "a,b,test", false, `"test"`],

@@ -38,7 +38,11 @@ const seconds = Number(values.seconds);
 const scratch = values.scratch as string;
 const concurrency = 8;
 
-async function latency(target: Target, run: () => unknown, ms: number): Promise<Array<number>> {
+async function latency<R>(
+  target: Target,
+  run: () => R | Promise<R>,
+  ms: number,
+): Promise<Array<number>> {
   const samples: Array<number> = [];
   const end = performance.now() + ms;
   while (performance.now() < end) {
@@ -49,8 +53,8 @@ async function latency(target: Target, run: () => unknown, ms: number): Promise<
   return samples;
 }
 
-async function throughput(
-  run: () => unknown,
+async function throughput<R>(
+  run: () => R | Promise<R>,
   ms: number,
 ): Promise<{ qps: number; lag: ReturnType<typeof summarize> }> {
   let done = 0;
@@ -79,6 +83,13 @@ async function throughput(
   clearInterval(timer);
   return { qps: (done / elapsed) * 1000, lag: summarize(lags) };
 }
+
+// one workload's measurement: latency of its requests, throughput and the lag of the loop
+type Cell = {
+  latency: ReturnType<typeof summarize>;
+  qps: number;
+  lag: ReturnType<typeof summarize>;
+};
 
 const results: Array<unknown> = [];
 const datasets: Array<[Dataset, string | undefined]> = [
@@ -109,7 +120,7 @@ for (const [dataset, source] of datasets) {
             ? () => target.app.concurrentDB().newQuery("SELECT 1").all()
             : () => target.app.concurrentDB().newQuery("SELECT 1").allAsync();
         const hop = summarize(await latency(target, ping, 1000));
-        const cells: Record<string, unknown> = {};
+        const cells: Record<string, Cell> = {};
         for (const name of workloadNames) {
           guard();
           const ms = (name === "slow" ? 1.5 : 1) * seconds * 1000;

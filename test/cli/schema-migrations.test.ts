@@ -13,6 +13,7 @@ import { join, resolve } from "node:path";
 
 import { run, startServer, tempDir } from "@test/support/executable";
 import type { RunningServer } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const sdkSource = join(repoRoot, "sdk/src");
@@ -38,7 +39,7 @@ async function newSite(): Promise<Site> {
   return { root, dataDir, schemaPath: join(root, "iglo.schema.json"), migrationsDir };
 }
 
-function writeSchema(site: Site, collections: Record<string, unknown>): void {
+function writeSchema(site: Site, collections: JsonObject): void {
   writeFileSync(site.schemaPath, JSON.stringify({ collections }, null, 2));
 }
 
@@ -46,11 +47,14 @@ function writeMigration(site: Site, file: string, source: string): void {
   writeFileSync(join(site.migrationsDir, file), source);
 }
 
+// a row of a table: SQLite returns these column values
+type SqlRow = { [column: string]: string | number | bigint | Uint8Array | null };
+
 // The content of the databases: every table's rows, read back. A failed apply
 // must leave the content as it was. (The bytes of the file are not compared:
 // SQLite rewrites pages on a rolled-back write, so the file can differ while
 // no row does.)
-function digests(dataDir: string): Record<string, string> {
+function digests(dataDir: string) {
   const result: Record<string, string> = {};
   for (const name of ["data.db", "auxiliary.db"]) {
     const path = join(dataDir, name);
@@ -69,7 +73,7 @@ function digests(dataDir: string): Record<string, string> {
       const content = Object.fromEntries(
         tables.map((table) => [
           table,
-          (db.query(`SELECT * FROM "${table}"`).all() as Array<Record<string, unknown>>)
+          (db.query(`SELECT * FROM "${table}"`).all() as Array<SqlRow>)
             .map((row) => JSON.stringify(row))
             .toSorted(),
         ]),
@@ -132,7 +136,7 @@ async function api(
   method: string,
   path: string,
   body?: unknown,
-): Promise<{ status: number; json: Record<string, unknown> }> {
+): Promise<{ status: number; json: JsonObject }> {
   const response = await fetch(`${url}${path}`, {
     method,
     headers: { authorization: token, "content-type": "application/json" },
@@ -141,19 +145,15 @@ async function api(
   const text = await response.text();
   return {
     status: response.status,
-    json: text === "" ? {} : (JSON.parse(text) as Record<string, unknown>),
+    json: text === "" ? {} : (JSON.parse(text) as JsonObject),
   };
 }
 
 // the records of a collection, through the API
-async function records(
-  url: string,
-  token: string,
-  collection: string,
-): Promise<Array<Record<string, unknown>>> {
+async function records(url: string, token: string, collection: string): Promise<Array<JsonObject>> {
   const result = await api(url, token, "GET", `/api/collections/${collection}/records?perPage=500`);
   expect(result.status).toBe(200);
-  return result.json.items as Array<Record<string, unknown>>;
+  return result.json.items as Array<JsonObject>;
 }
 
 // the fields of a collection as the API returns them
@@ -161,19 +161,15 @@ async function fieldsOf(
   url: string,
   token: string,
   collection: string,
-): Promise<Record<string, Record<string, unknown>>> {
+): Promise<Record<string, JsonObject>> {
   const result = await api(url, token, "GET", `/api/collections/${collection}`);
   expect(result.status).toBe(200);
-  const fields = result.json.fields as Array<Record<string, unknown>>;
+  const fields = result.json.fields as Array<JsonObject>;
   return Object.fromEntries(fields.map((field) => [String(field.name), field]));
 }
 
 // the rules of a collection as the API returns them
-async function rulesOf(
-  url: string,
-  token: string,
-  collection: string,
-): Promise<Record<string, unknown>> {
+async function rulesOf(url: string, token: string, collection: string): Promise<JsonObject> {
   const result = await api(url, token, "GET", `/api/collections/${collection}`);
   expect(result.status).toBe(200);
   return result.json;
@@ -183,7 +179,7 @@ async function rulesOf(
 const migrationSource = (body: string): string => `export default {\n${body}\n};\n`;
 
 const posts = (
-  fields: Record<string, unknown>,
+  fields: JsonObject,
   rules: Record<string, string | null> = { list: "", view: "" },
 ) => ({
   type: "base",
@@ -261,7 +257,7 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
       body: form,
     });
     expect(upload.status).toBe(200);
-    const post = (await upload.json()) as Record<string, unknown>;
+    const post = (await upload.json()) as JsonObject;
     const postsCollection = (await api(server.url, token, "GET", "/api/collections/posts")).json;
     const authorsCollection = (await api(server.url, token, "GET", "/api/collections/authors"))
       .json;
@@ -847,9 +843,9 @@ describe("TypeScript migrations and declared renames (S.5)", () => {
 // collection in any form are cleared, and the file's are set again. A start
 // with the file and its renames applies, and `schema plan` says so first.
 async function renameScenario(
-  before: Record<string, unknown>,
+  before: JsonObject,
   seed: (url: string, token: string) => Promise<void>,
-  after: Record<string, unknown>,
+  after: JsonObject,
   migrations: Array<[file: string, source: string]>,
   check: (url: string, token: string) => Promise<void>,
 ): Promise<void> {
@@ -876,11 +872,7 @@ async function renameScenario(
 }
 
 // the collection's rules, the fields and the indexes as the API returns them
-async function collectionOf(
-  url: string,
-  token: string,
-  name: string,
-): Promise<Record<string, unknown>> {
+async function collectionOf(url: string, token: string, name: string): Promise<JsonObject> {
   return (await api(url, token, "GET", `/api/collections/${name}`)).json;
 }
 
@@ -1361,7 +1353,7 @@ describe("declared renames: references, files and hidden fields (S.5)", () => {
       ],
       async (url, token) => {
         const [member] = (await api(url, token, "GET", "/api/collections/members/records")).json
-          .items as Array<Record<string, unknown>>;
+          .items as Array<JsonObject>;
         expect(member?.note).toBe("ann@example.test|s3cr3t");
         expect(member?.secret).toBe("s3cr3t");
       },

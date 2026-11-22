@@ -86,6 +86,24 @@ function canBeIgnored(err: Error | undefined): boolean {
   return benignErrors.some((benign) => err.message.includes(benign));
 }
 
+// the request log's attributes (the members set below)
+type RequestLogAttrs = {
+  type: string;
+  url: string;
+  method: string;
+  referer: string;
+  userAgent: string;
+  error?: string;
+  details?: unknown;
+  status?: number;
+  execTime?: number;
+  meta?: unknown;
+  auth?: string;
+  authId?: string;
+  userIP?: string;
+  remoteIP?: string;
+};
+
 function logRequest(event: RequestEvent, result: HandlerResult): void {
   const err = result ?? undefined;
 
@@ -111,7 +129,7 @@ function logRequest(event: RequestEvent, result: HandlerResult): void {
     3000,
   );
 
-  const attrs: { [key: string]: unknown } = {
+  const attrs: RequestLogAttrs = {
     type: "request",
     url: requestUri,
     method,

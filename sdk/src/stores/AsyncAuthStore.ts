@@ -1,6 +1,7 @@
 // js-sdk v0.28.1 src/stores/AsyncAuthStore.ts
 import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
 import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
+import type { JsonObject } from "@sdk/tools/json";
 
 export type AsyncSaveFunc = (serializedPayload: string) => Promise<void>;
 
@@ -91,19 +92,19 @@ export class AsyncAuthStore extends BaseAuthStore {
       const resolved: unknown = await payload;
 
       if (resolved) {
-        let parsed: Record<string, unknown> | undefined;
+        let parsed: JsonObject | undefined;
         if (typeof resolved === "string") {
           const json: unknown = JSON.parse(resolved);
           if (typeof json === "object" && json !== null) {
-            parsed = json as Record<string, unknown>;
+            parsed = json as JsonObject;
           } else {
             parsed = {};
           }
         } else if (typeof resolved === "object" && resolved !== null) {
-          parsed = resolved as Record<string, unknown>;
+          parsed = resolved as JsonObject;
         }
 
-        const fields = parsed as Record<string, unknown>;
+        const fields = parsed as JsonObject;
         const token = typeof fields.token === "string" ? fields.token : "";
         const recordOrModel = (fields.record || fields.model || null) as AuthRecord;
         this.save(token, recordOrModel);

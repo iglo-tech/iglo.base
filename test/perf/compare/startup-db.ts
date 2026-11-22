@@ -33,7 +33,7 @@ try {
   await api.loginSuperuser("bench@example.com", "1234567890");
   for (let i = 0; i < 20; i++) {
     const name = `coll${i}`;
-    const fields: Array<Record<string, unknown>> = [
+    const fields: Array<Record<string, string | number | boolean | Array<string> | undefined>> = [
       { name: "title", type: "text", required: true, max: 200 },
       { name: "body", type: "editor" },
       { name: "views", type: "number" },
@@ -91,7 +91,8 @@ db.transaction(() => {
     );
     const n = i === 0 ? 1000 : 500; // 1000 + 19 * 500 = 10,500
     for (let r = 0; r < n; r++) {
-      const row: Record<string, unknown> = {
+      // oxlint-disable-next-line quality/no-known-value-widening -- indexed by a column name from the table list, so the key type stays string
+      const row: Record<string, string | number | undefined> = {
         id: `r${String(i).padStart(2, "0")}${String(r).padStart(12, "0")}`,
         title: `Record ${i}/${r}`,
         body: `<p>Body ${r}</p>`.repeat(3),

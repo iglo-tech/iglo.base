@@ -18,6 +18,7 @@ import { Rng } from "@test/differential/fuzz/rng";
 import { rid } from "@test/differential/resolver/schema";
 import { freshStart, freshSuperuser, roundTrip, signedIn } from "@test/differential/roundtrip/run";
 import type { Client, RoundTripScenario } from "@test/differential/roundtrip/run";
+import type { JsonObject } from "@test/support/json";
 import { file, picture, tags, writeScenario } from "@test/differential/roundtrip/scenario";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 
@@ -37,7 +38,7 @@ function recordId(tag: string, n: number): string {
 }
 
 // a record's fields, the same in every run
-function recordBody(rng: Rng, tag: string, n: number): Record<string, unknown> {
+function recordBody(rng: Rng, tag: string, n: number) {
   const owner = n > 0 && rng.chance(0.5) ? recordId(tag, rng.int(n)) : "";
   const many: Array<string> = [];
   if (n > 0) {
@@ -61,7 +62,7 @@ function recordBody(rng: Rng, tag: string, n: number): Record<string, unknown> {
     point: { lon: rng.int(360_000) / 1000 - 180, lat: rng.int(180_000) / 1000 - 90 },
     owner,
     many,
-  };
+  } satisfies JsonObject;
 }
 
 async function createCollection(c: Client, tag: string): Promise<string> {
@@ -92,8 +93,7 @@ async function createCollection(c: Client, tag: string): Promise<string> {
   const id = created.id;
   await c.patch(`/api/collections/${name}`, {
     fields: [
-      ...((await c.get(`/api/collections/${name}`)) as { fields: Array<Record<string, unknown>> })
-        .fields,
+      ...((await c.get(`/api/collections/${name}`)) as { fields: Array<JsonObject> }).fields,
       { name: "owner", type: "relation", collectionId: id, maxSelect: 1 },
       { name: "many", type: "relation", collectionId: id, maxSelect: 3 },
     ],

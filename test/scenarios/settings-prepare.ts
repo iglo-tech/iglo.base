@@ -9,9 +9,10 @@ import { Database } from "bun:sqlite";
 import { join } from "node:path";
 
 import type { AfterContext, PrepareContext } from "@test/scenarios/scenario";
+import type { JsonObject } from "@test/support/json";
 import { sharedSmtpSink } from "@test/support/smtp-sink";
 
-type SettingsJSON = { [key: string]: { [key: string]: unknown } } & {
+type SettingsJSON = { [key: string]: JsonObject } & {
   superuserIPs?: Array<string>;
 };
 

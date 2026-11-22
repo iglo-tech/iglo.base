@@ -123,6 +123,7 @@ export class Reader {
   // bytes of data (or unlimited if lim is less than 0).
   async readContinuedLineSlice(
     lim: number,
+    // oxlint-disable-next-line quality/no-unknown-returns -- the Go error result of the validation: an error result is the thrown value, which is unknown in this port
     validateFirstLine: (line: Uint8Array) => unknown,
   ): Promise<[Uint8Array | undefined, unknown]> {
     // Read the first line.
@@ -322,7 +323,7 @@ export async function readMIMEHeader(
 
 // mustHaveFieldNameColon ensures that, per RFC 7230, the field-name is on
 // a single line, so the first line must contain a colon.
-function mustHaveFieldNameColon(line: Uint8Array): unknown {
+function mustHaveFieldNameColon(line: Uint8Array): ProtocolError | undefined {
   if (line.indexOf(0x3a) < 0) {
     return new ProtocolError(`malformed MIME header: missing colon: ${goQuote(line)}`);
   }

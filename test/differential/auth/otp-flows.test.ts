@@ -20,10 +20,12 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { changeSettings } from "@test/scenarios/settings-prepare";
 import { executable, startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startMailpit } from "@test/support/mailpit";
 import type { Mailpit } from "@test/support/mailpit";
 import { defaultLayout, requireTool } from "@test/support/reference-tools";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 // starting and stopping the servers is slow on some runners
 const timeout = 120_000;
@@ -40,12 +42,13 @@ interface Server {
   kind: Kind;
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  // the iglo.base process's RunResult, or nothing for upstream
+  stop(): Promise<RunResult | void>;
 }
 
 interface Reply {
   status: number;
-  json: { [key: string]: unknown };
+  json: JsonObject;
 }
 
 const roots: Array<string> = [];
@@ -154,7 +157,7 @@ const authWithOTP = async (
   server: Server,
   otpId: unknown,
   password: string,
-  extra: Record<string, unknown> = {},
+  extra: Partial<JsonObject> = {},
   collection = "users",
 ): Promise<Reply> => {
   await awaitSentTo(server, otpId);
@@ -167,7 +170,7 @@ const authWithOTP = async (
 
 const login = (
   server: Server,
-  extra: Record<string, unknown> = {},
+  extra: Partial<JsonObject> = {},
   collection = "users",
 ): Promise<Reply> =>
   post(server, `/api/collections/${collection}/auth-with-password`, {
@@ -248,15 +251,15 @@ function normalizeMail(raw: string): string {
 // transcripts
 
 // generated values replaced, for comparing two servers' replies
-function shape(reply: Reply): unknown {
+function shape(reply: Reply) {
   // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
-  const json = JSON.parse(JSON.stringify(reply.json)) as { [key: string]: unknown };
+  const json = JSON.parse(JSON.stringify(reply.json)) as JsonObject;
   for (const key of ["otpId", "mfaId", "token"]) {
     if (typeof json[key] === "string") {
       json[key] = `<${key}>`;
     }
   }
-  for (const item of [json, json["record"] as { [key: string]: unknown } | undefined]) {
+  for (const item of [json, json["record"] as JsonObject | undefined]) {
     if (item?.["updated"] !== undefined) {
       item["updated"] = "<updated>";
     }

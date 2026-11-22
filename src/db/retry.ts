@@ -85,10 +85,12 @@ function withTimeout(q: Query, timeout: number, now: NowFunc): () => void {
   };
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the function returns err unchanged for a no-rows error (any caught value, so unknown)
 function failedQueryError(q: Query, err: unknown): unknown {
   if (isNoRowsError(err)) {
     return err;
   }
+  // oxlint-disable-next-line quality/no-known-value-widening -- the function also returns err unchanged (any caught value, so unknown), and no narrower return type holds for both branches
   return new Error(`${errorMessage(err)}; failed query: ${q.sql()}`, { cause: err });
 }
 

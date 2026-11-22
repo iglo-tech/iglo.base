@@ -195,7 +195,7 @@ export function toStringE(i: unknown): string {
     return bytesToText(i);
   }
   if (typeof i === "object" && typeof (i as { string?: unknown }).string === "function") {
-    return String((i as { string(): unknown }).string());
+    return String((i as { string(): string }).string());
   }
   if (i instanceof Error) {
     return i.message;

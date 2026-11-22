@@ -42,6 +42,7 @@ function writeBatch(conn: Database, rows: LogWorkerRequest & { type: "write" }):
       conn.run("BEGIN IMMEDIATE");
       try {
         let insert: Statement | null = null;
+        // oxlint-disable-next-line quality/no-known-value-widening -- holds the caught prepare error, which JavaScript allows to be any value; it is thrown unchanged
         let prepareErr: unknown = null;
         try {
           insert = conn.query(insertSQL);

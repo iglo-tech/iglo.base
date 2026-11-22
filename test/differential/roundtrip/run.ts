@@ -23,6 +23,7 @@ import type { Snapshot } from "@test/differential/roundtrip/snapshot";
 import type { ScenarioResponse } from "@test/scenarios/request";
 import type { Scenario } from "@test/scenarios/scenario";
 import { startServer } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 import { startUpstream } from "@test/support/upstream";
 
 export type Kind = "upstream" | "iglo.base";
@@ -248,7 +249,7 @@ async function sweep(
       if (res.status !== 200) {
         break;
       }
-      const list = parse(res) as { items: Array<Record<string, unknown>> };
+      const list = parse(res) as { items: Array<JsonObject> };
       for (const item of list.items) {
         for (const field of files) {
           const value = item[field];
@@ -463,7 +464,10 @@ export async function runLegs(options: RunOptions): Promise<RunResult> {
     logsPerLeg.push(logs);
   }
 
-  const encryptedField: { encryptionKey?: typeof encryptionKey } = {};
+  interface EncryptedField {
+    encryptionKey?: typeof encryptionKey;
+  }
+  const encryptedField: EncryptedField = {};
   if (options.encrypted?.at(-1)) {
     encryptedField.encryptionKey = encryptionKey;
   }

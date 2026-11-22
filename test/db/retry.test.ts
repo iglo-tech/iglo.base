@@ -35,7 +35,7 @@ describe("TestBaseLockRetry", () => {
   scenarios.forEach((s, i) => {
     test(`${i}_${s.err?.message ?? "nil"}`, () => {
       let lastAttempt = 0;
-      let err: unknown = null;
+      let err = null;
 
       try {
         baseLockRetry(

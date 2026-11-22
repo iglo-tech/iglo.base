@@ -99,6 +99,7 @@ export interface DriverWriter {
 export interface Driver {
   // NormalizeError converts driver errors (adds ErrNotFound to a
   // not-exist error).
+  // oxlint-disable-next-line quality/no-unknown-returns -- a caught driver error of any thrown value, returned unchanged unless it is a not-exist error
   normalizeError(err: unknown): unknown;
   listPaged(opts: ListOptions): ListPage;
   attributes(key: string): Attributes;
@@ -118,6 +119,7 @@ export interface AsyncDriverReader {
 // A driver whose calls go over the network (the S3 driver). The signal is
 // Go's context. upload replaces newTypedWriter: it takes the whole payload.
 export interface AsyncDriver {
+  // oxlint-disable-next-line quality/no-unknown-returns -- a caught driver error of any thrown value, returned unchanged unless it is a not-exist error
   normalizeError(err: unknown): unknown;
   listPaged(opts: ListOptions, signal?: AbortSignal): Promise<ListPage>;
   attributes(key: string, signal?: AbortSignal): Promise<Attributes>;

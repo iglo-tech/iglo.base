@@ -31,7 +31,7 @@ runInTransaction(app, (tx) => {
       .execute();
   }
 });
-function run(name: string, f: () => unknown) {
+function run(name: string, f: () => void) {
   for (let i = 0; i < 5000; i++) {
     f();
   }

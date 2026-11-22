@@ -33,7 +33,7 @@ export const assert = {
   },
   instanceOf(
     value: unknown,
-    ctor: (abstract new (...args: Array<never>) => unknown) & { readonly prototype: unknown },
+    ctor: (abstract new (...args: Array<never>) => object) & { readonly prototype: unknown },
     msg?: string,
   ): void {
     nodeAssert(value instanceof ctor, msg ?? `expected value to be an instance of ${ctor.name}`);

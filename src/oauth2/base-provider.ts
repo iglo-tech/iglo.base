@@ -26,6 +26,7 @@ export class AuthUser {
   // the zero types.DateTime
   expiry = new DateTime();
   // null is Go's nil map (marshaled as {} by json v2)
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the provider's raw user document as decoded JSON, kept raw for the record meta
   rawUser: { [key: string]: unknown } | null = null;
   id = "";
   name = "";
@@ -45,6 +46,7 @@ export class AuthUser {
 
   // json.Marshal + json.Unmarshal into a map, as recordAuthWithOAuth2 builds
   // its meta; the legacy avatarUrl key is populated (AuthUser.MarshalJSON)
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the meta is the marshaled AuthUser decoded back as a JSON object of any kind
   toMeta(): { [key: string]: unknown } {
     const text = marshal({
       expiry: this.expiry.toString(),
@@ -58,6 +60,7 @@ export class AuthUser {
       email: this.email,
       avatarUrl: this.avatarURL,
     });
+    // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the meta is the marshaled AuthUser decoded back as a JSON object of any kind
     return unmarshal(text, mapOf(anyType)) as { [key: string]: unknown };
   }
 }
@@ -67,6 +70,7 @@ export abstract class BaseProvider implements TokenConfig {
   signal: AbortSignal | undefined;
   clock: Clock = systemClock();
   // the Extra config options; null is Go's nil map
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the provider's Extra config options (JSON values of any kind)
   extra: { [key: string]: unknown } | null = null;
   redirectURL = "";
   clientId = "";
@@ -82,6 +86,7 @@ export abstract class BaseProvider implements TokenConfig {
 
   // SetExtra stores the Extra config options. A provider overrides it to
   // react to an option (Microsoft's idTokenEmailClaim adds the openid scope).
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the Extra config options (JSON values of any kind)
   setExtra(data: { [key: string]: unknown }): void {
     this.extra = data;
   }

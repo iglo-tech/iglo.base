@@ -98,7 +98,7 @@ export function fakeTimers(clock: TestClock) {
   const pending = new Map<number, { due: number; fn: () => void }>();
   return {
     timers: {
-      setTimeout: (fn: () => void, ms: number): unknown => {
+      setTimeout: (fn: () => void, ms: number) => {
         seq++;
         pending.set(seq, { due: clock.now + ms, fn });
         return seq;

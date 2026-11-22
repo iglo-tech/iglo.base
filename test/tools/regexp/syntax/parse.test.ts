@@ -98,6 +98,7 @@ function dump(re: Regexp): string {
   return b.join("");
 }
 
+// oxlint-disable-next-line quality/no-known-value-widening -- indexed by an Op value, which is a plain number (Op = number), so the key type stays number
 const opNames: Record<number, string> = {
   [OpNoMatch]: "no",
   [OpEmptyMatch]: "emp",

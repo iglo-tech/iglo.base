@@ -15,11 +15,14 @@ export interface SchemaRow {
   sql: string | null;
 }
 
+// a row as bun:sqlite returns it: each column is a SQLite value
+type DBRow = Record<string, string | number | bigint | Uint8Array | null>;
+
 export interface PbDataDump {
   dataSchema: Array<SchemaRow>;
   auxSchema: Array<SchemaRow>;
   migrations: Array<{ file: string; applied: number }>;
-  collections: Array<{ [key: string]: unknown }>;
+  collections: Array<DBRow>;
   params: Array<{ id: string }>;
 }
 
@@ -63,9 +66,7 @@ export function dumpPbData(dataDir: string): PbDataDump {
         }>)
       : [],
     collections: hasTable(db, "_collections")
-      ? (db.query("SELECT * FROM _collections ORDER BY rowid").all() as Array<{
-          [key: string]: unknown;
-        }>)
+      ? (db.query("SELECT * FROM _collections ORDER BY rowid").all() as Array<DBRow>)
       : [],
     params: hasTable(db, "_params")
       ? (db.query("SELECT id FROM _params ORDER BY rowid").all() as Array<{ id: string }>)
@@ -92,7 +93,7 @@ export function withoutStat4(rows: Array<SchemaRow>): Array<SchemaRow> {
 // every entry of a directory, recursively and sorted, with the SHA-256 of
 // each file's bytes ("dir" for a directory): what a refused open must
 // leave unchanged
-export function fileState(dir: string): Record<string, string> {
+export function fileState(dir: string) {
   const state: Record<string, string> = {};
   const entries = readdirSync(dir, { recursive: true, withFileTypes: true }).map((e) => ({
     path: join(e.parentPath, e.name),

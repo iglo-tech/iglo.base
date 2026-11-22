@@ -146,7 +146,7 @@ describe("Record.marshalJSON", () => {
         rec.ignoreEmailVisibility(r() < 0.5);
       }
       if (r() < 0.6) {
-        const expand: { [key: string]: unknown } = {};
+        const expand: { [key: string]: Record | Array<Record> } = {};
         const inner = newRecord(buildCollection(r, false));
         fill(r, inner);
         expand["rel1"] = inner;

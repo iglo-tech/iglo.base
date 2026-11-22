@@ -38,6 +38,7 @@ import { RawURLEncoding } from "@/tools/security/base64";
 import { parseUnverifiedJWT } from "@/tools/security/jwt";
 
 import { openTestApp } from "@test/collections/app";
+import type { JsonObject } from "@test/support/json";
 
 const Second = 1_000_000_000n;
 
@@ -46,7 +47,7 @@ const nowMs = Date.UTC(2026, 9, 29, 10, 11, 12, 345);
 const nowUnix = Math.floor(nowMs / 1000);
 const clock: Clock = { now: () => new Date(nowMs) };
 
-function errorOf(fn: () => unknown): unknown {
+function errorOf(fn: () => void) {
   try {
     fn();
     return null;
@@ -126,7 +127,7 @@ test("TestNewFileToken", () => {
 function testRecordToken(
   tokenType: string,
   tokenFunc: (record: Record) => string,
-  expectedClaims: { [key: string]: unknown } | null,
+  expectedClaims: JsonObject | null,
 ): void {
   const app = openTestApp(clock);
   try {

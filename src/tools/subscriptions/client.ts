@@ -13,6 +13,7 @@ import { snakecase } from "@/tools/inflector/inflector";
 import { randomString } from "@/tools/security/random";
 import { toString } from "@/tools/types/cast";
 import { anyType, mapOf, unmarshalStruct } from "@/tools/types/go-json";
+import type { GoMap } from "@/server/json-decode";
 import { parseQuery } from "@/server/request";
 import { Parse } from "@/validation/is/go-url";
 import type { Message } from "@/tools/subscriptions/message";
@@ -111,8 +112,8 @@ export class Client {
 
       // extract subscription options (if any)
       // note: any instead of string to minimize the breaking changes with earlier versions
-      let rawQuery: { [key: string]: unknown } | undefined;
-      let rawHeaders: { [key: string]: unknown } | undefined;
+      let rawQuery: GoMap | undefined;
+      let rawHeaders: GoMap | undefined;
       const raw = optionsQueryValue(s);
       if (raw !== "") {
         try {
@@ -168,6 +169,7 @@ export class Client {
   }
 
   // Get retrieves the key value from the client's context.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the value is whatever the caller stored with set (any type)
   get(key: string): unknown {
     return this.#store.get(key);
   }

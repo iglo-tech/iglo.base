@@ -47,6 +47,7 @@ export type BuilderFunc = (db: DB, executor: Executor) => Builder;
 
 // BuilderFuncMap lists supported BuilderFunc according to DB driver names.
 // If a DB driver is not listed here, the StandardBuilder will be used.
+// oxlint-disable-next-line quality/no-known-value-widening -- the lookup takes the driver name as a runtime string and falls back for names not listed; the open Record is what allows that lookup without an assertion
 const builderFuncMap: Readonly<Record<string, BuilderFunc>> = {
   sqlite: (db, executor) => new SqliteBuilder(db, executor),
   sqlite3: (db, executor) => new SqliteBuilder(db, executor),

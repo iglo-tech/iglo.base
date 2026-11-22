@@ -5,6 +5,7 @@
 import { text } from "@test/differential/files/cases";
 import type { FileCase, Part } from "@test/differential/files/cases";
 import { superuserToken } from "@test/scenarios/record-crud";
+import type { Json, JsonObject } from "@test/support/json";
 
 export interface Res {
   status: number;
@@ -13,6 +14,8 @@ export interface Res {
   body: Uint8Array;
 }
 
+type RecordRequestHeaders = { authorization: string; "content-type"?: string };
+
 export async function req(
   url: string,
   method: string,
@@ -20,7 +23,7 @@ export async function req(
   body?: Uint8Array | string,
   contentType?: string,
 ): Promise<Res> {
-  const headers: Record<string, string> = { authorization: superuserToken };
+  const headers: RecordRequestHeaders = { authorization: superuserToken };
   if (contentType) {
     headers["content-type"] = contentType;
   }
@@ -141,13 +144,7 @@ export function compareJSON(
       return;
     }
     for (const k of uk) {
-      compareJSON(
-        (up as Record<string, unknown>)[k],
-        (ig as Record<string, unknown>)[k],
-        `${path}.${k}`,
-        pairing,
-        out,
-      );
+      compareJSON((up as JsonObject)[k], (ig as JsonObject)[k], `${path}.${k}`, pairing, out);
     }
     return;
   }
@@ -178,7 +175,7 @@ export function compareRes(up: Res, ig: Res, pairing: Pairing): Array<string> {
 // a server's view of the run: its own records per ref
 export interface Side {
   url: string;
-  records: Map<string, Record<string, unknown>>;
+  records: Map<string, JsonObject>;
 }
 
 function resolveValue(v: string, side: Side): string {
@@ -198,7 +195,7 @@ function resolveValue(v: string, side: Side): string {
   );
 }
 
-export function resolveJSON(v: unknown, side: Side): unknown {
+export function resolveJSON(v: Json, side: Side): Json {
   if (typeof v === "string") {
     return resolveValue(v, side);
   }
@@ -262,7 +259,7 @@ export async function sendCase(c: FileCase, side: Side): Promise<Res> {
     res = await req(side.url, c.method, path);
   }
   if (res.status === 200 && c.ref !== undefined && c.method !== "DELETE") {
-    side.records.set(c.ref, JSON.parse(res.text) as Record<string, unknown>);
+    side.records.set(c.ref, JSON.parse(res.text) as JsonObject);
   }
   return res;
 }

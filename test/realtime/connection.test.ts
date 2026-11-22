@@ -27,6 +27,7 @@ import type { Mux } from "@/server/router";
 import { openFixtureApp } from "@test/app/app";
 import type { TestApp } from "@test/app/app";
 import { superuserToken } from "@test/scenarios/record-crud";
+import type { JsonObject } from "@test/support/json";
 import { serveTest } from "@test/support/router";
 
 // timers that fire only when advanced
@@ -35,7 +36,7 @@ class FakeTimers implements RealtimeTimers {
   #next = 1;
   readonly #timers = new Map<number, { at: number; fn: () => void }>();
 
-  setTimeout(fn: () => void, ms: number): unknown {
+  setTimeout(fn: () => void, ms: number): number {
     const id = this.#next++;
     this.#timers.set(id, { at: this.now + ms, fn });
     return id;
@@ -149,11 +150,7 @@ async function subscribe(
 
 let created = 0;
 
-async function create(
-  mux: Mux,
-  collection: string,
-  data: { [key: string]: unknown },
-): Promise<void> {
+async function create(mux: Mux, collection: string, data: JsonObject): Promise<void> {
   const res = await serveTest(mux, {
     method: "POST",
     target: `/api/collections/${collection}/records`,

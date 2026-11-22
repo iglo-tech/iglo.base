@@ -57,7 +57,7 @@ export function tableInfo(app: Databases, tableName: string): Array<TableInfoRow
 // TableIndexes returns a name grouped map with all non empty index of the specified table.
 //
 // Note: This method doesn't return an error on nonexisting table.
-export function tableIndexes(app: Databases, tableName: string): Record<string, string> {
+export function tableIndexes(app: Databases, tableName: string) {
   const indexes = app
     .concurrentDB()
     .select("name", "sql")

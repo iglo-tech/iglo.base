@@ -5,6 +5,7 @@ import { BaseAuthStore } from "@sdk/stores/BaseAuthStore";
 import type { AuthRecord } from "@sdk/stores/BaseAuthStore";
 import { getTokenPayload } from "@sdk/tools/jwt";
 import type { RecordModel } from "@sdk/tools/dtos";
+import type { JsonObject } from "@sdk/tools/json";
 import type { SendOptions } from "@sdk/tools/options";
 import type { Loose, LooseObject } from "@sdk/tools/loose";
 import type { RecordAuthResponse } from "@sdk/services/RecordService";
@@ -165,7 +166,7 @@ export class ServerClient extends Client {
    * and the server's clock and the collection lifetime are read from each response.
    */
   override async send<T = Loose>(path: string, options: SendOptions): Promise<T> {
-    const seen: { date?: string | null } = {};
+    const seen: Partial<Record<"date", string | null>> = {};
     options.fetch = noStoreFetch(options.fetch ?? this._options.fetch, (response) => {
       seen.date = response.headers.get("date");
     });
@@ -543,7 +544,7 @@ export class ServerClient extends Client {
       this._options.sessionCache.clockOffsetMs = this._clockOffsetMs;
     }
 
-    const body = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+    const body = data && typeof data === "object" ? (data as JsonObject) : {};
     const token = typeof body["token"] === "string" ? body["token"] : "";
     if (!token || !SESSION_RESPONSE_PATH.test(path)) {
       return;

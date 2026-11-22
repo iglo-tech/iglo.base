@@ -48,8 +48,10 @@ async function withServer(dataDir: string, fn: (url: string) => Promise<void>): 
   }
 }
 
+type PostHeaders = { "Content-Type": string; Authorization?: string };
+
 function post(url: string, path: string, body: unknown, token?: string): Promise<Response> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: PostHeaders = { "Content-Type": "application/json" };
   if (token !== undefined) {
     headers.Authorization = token;
   }

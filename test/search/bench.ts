@@ -30,7 +30,7 @@ function median(xs: Array<number>): number {
 }
 
 // the median of `runs` timings (ms) after `warmup` runs
-async function time(runs: number, warmup: number, fn: () => unknown): Promise<number> {
+async function time<R>(runs: number, warmup: number, fn: () => R | Promise<R>): Promise<number> {
   for (let i = 0; i < warmup; i++) {
     await fn();
   }

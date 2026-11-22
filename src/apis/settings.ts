@@ -85,7 +85,7 @@ async function settingsSet(e: RequestEvent): Promise<Error | undefined> {
   }
 
   const data = newSettings.settings;
-  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
+  // oxlint-disable-next-line quality/no-chained-type-assertions, quality/no-unsafe-dictionary-type -- a single assertion does not compile (TS2352): the two types do not overlap, and the Settings' own fields are set by name by the binder (a Go struct value); reshaping the types is a separate design change
   const bindErr = await e.bindBody(newSettings as unknown as Record<string, unknown>, settingsType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
@@ -123,10 +123,10 @@ const testS3FilesystemType = structOf([
   { name: "Filesystem", type: "string", tags: { form: "filesystem", json: "filesystem" } },
 ]);
 
-interface TestS3Filesystem {
+type TestS3Filesystem = {
   // The name of the filesystem - storage or backups
   Filesystem: string;
-}
+};
 
 function validateTestS3Filesystem(form: TestS3Filesystem): Error | null {
   return ValidateStruct(
@@ -197,11 +197,7 @@ async function settingsTestS3(e: RequestEvent): Promise<Error | undefined> {
   const form: TestS3Filesystem = { Filesystem: "" };
 
   // load request
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as Record<string, unknown>,
-    testS3FilesystemType,
-  );
+  const bindErr = await e.bindBody(form, testS3FilesystemType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
   }
@@ -237,11 +233,11 @@ const testEmailSendType = structOf([
   { name: "Collection", type: "string", tags: { form: "collection", json: "collection" } },
 ]);
 
-interface TestEmailSend {
+type TestEmailSend = {
   Email: string;
   Template: string;
   Collection: string;
-}
+};
 
 function validateTestEmailSend(app: App, form: TestEmailSend): Error | null {
   return ValidateStruct(
@@ -346,8 +342,7 @@ async function settingsTestEmail(e: RequestEvent): Promise<Error | undefined> {
   const form: TestEmailSend = { Email: "", Template: "", Collection: "" };
 
   // load request
-  // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-  const bindErr = await e.bindBody(form as unknown as Record<string, unknown>, testEmailSendType);
+  const bindErr = await e.bindBody(form, testEmailSendType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
   }
@@ -391,13 +386,13 @@ const appleClientSecretCreateType = structOf([
   { name: "Duration", type: "int", tags: { form: "duration", json: "duration" } },
 ]);
 
-interface AppleClientSecretCreate {
+type AppleClientSecretCreate = {
   ClientId: string;
   TeamId: string;
   KeyId: string;
   PrivateKey: string;
   Duration: number | bigint;
-}
+};
 
 function validateAppleClientSecretCreate(form: AppleClientSecretCreate): Error | null {
   return ValidateStruct(
@@ -446,11 +441,7 @@ async function settingsGenerateAppleClientSecret(e: RequestEvent): Promise<Error
   };
 
   // load request
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as Record<string, unknown>,
-    appleClientSecretCreateType,
-  );
+  const bindErr = await e.bindBody(form, appleClientSecretCreateType);
   if (bindErr) {
     return e.badRequestError("An error occurred while loading the submitted data.", bindErr);
   }

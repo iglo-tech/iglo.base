@@ -381,6 +381,7 @@ export class CollectionValidator implements AuthOptionsValidator, ViewOptionsVal
       return null; // nothing to check
     }
 
+    // oxlint-disable-next-line quality/no-known-value-widening -- a caught value of any thrown type (dryRunView), tested against null and read as an Error or a String
     let err: unknown = null;
     try {
       dryRunView(this.app, v, 10);

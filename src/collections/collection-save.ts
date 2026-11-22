@@ -84,6 +84,9 @@ import { FieldsList } from "@/collections/fields-list";
 import { DateTime } from "@/tools/types/datetime";
 import { isInstance } from "@/tools/types/is-instance";
 
+// the app a rate limit relabel saves through: SettingsSaveApp, with its optional members writable
+type RelabelApp = { -readonly [K in keyof SettingsSaveApp]: SettingsSaveApp[K] };
+
 // app.Save(collection): validates and saves the collection, its view or
 // records table and its indexes.
 export function saveCollection(app: CollectionsApp, collection: Collection): void {
@@ -200,7 +203,7 @@ function save(app: CollectionsApp, collection: Collection, withValidations: bool
 
     // update existing rate limit rules on collection rename
     if (oldName !== null && app.settings !== undefined) {
-      const relabelApp: { -readonly [K in keyof SettingsSaveApp]: SettingsSaveApp[K] } = {
+      const relabelApp: RelabelApp = {
         databases: app.databases,
         clock: app.clock,
         encryptionEnv: app.encryptionEnv ?? "",
@@ -502,6 +505,7 @@ function driverValues(data: Params): Params {
   return result;
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- the bound SQL parameter is the dbExport value as it is (only driver.Valuer types are converted), so its type is any value
 function driverValue(key: string, value: unknown): unknown {
   if (isInstance(FieldsList, value) || isInstance(DateTime, value)) {
     return value.value();

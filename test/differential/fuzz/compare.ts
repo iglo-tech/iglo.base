@@ -76,7 +76,7 @@ export function sortText(c: FuzzCase): string | null {
 }
 
 export function requestPath(c: FuzzCase): string {
-  const params: { [name: string]: string } = { ...c.params };
+  const params = { ...c.params };
   if (c.filter !== null) {
     params.filter = printFilter(c.filter);
   }
@@ -98,7 +98,7 @@ async function request(
   headers: { [name: string]: string },
 ): Promise<Outcome | { error: string }> {
   try {
-    const requestHeaders: { [name: string]: string } = { ...headers };
+    const requestHeaders = { ...headers };
     if (tokens[who] !== "") {
       requestHeaders.authorization = tokens[who];
     }

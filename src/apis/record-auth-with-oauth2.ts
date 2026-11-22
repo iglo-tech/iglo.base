@@ -109,11 +109,7 @@ export async function recordAuthWithOAuth2(
     RedirectURL: "",
     RedirectUrl: "",
   };
-  const bindErr = await e.bindBody(
-    // oxlint-disable-next-line quality/no-chained-type-assertions -- a single assertion does not compile (TS2352): the two types do not overlap; reshaping the types is a separate design change
-    form as unknown as { [key: string]: unknown },
-    recordOAuth2LoginFormType,
-  );
+  const bindErr = await e.bindBody(form, recordOAuth2LoginFormType);
   if (bindErr) {
     return firstApiError(
       bindErr,
@@ -282,6 +278,7 @@ export async function recordAuthWithOAuth2(
   await uploads.finish(true);
 
   // @todo revert back to struct after removing the custom auth.AuthUser marshalization
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the OAuth2 user's meta (AuthUser.toMeta), a JSON object of any kind of value
   let meta: { [key: string]: unknown };
   try {
     meta = authUser.toMeta();
@@ -295,7 +292,7 @@ export async function recordAuthWithOAuth2(
 
 // -------------------------------------------------------------------
 
-const tags = (name: string): { form: string; json: string } => ({ form: name, json: name });
+const tags = (name: string) => ({ form: name, json: name });
 
 const recordOAuth2LoginFormType = structOf([
   // map[string]any, checked after the bind
@@ -307,9 +304,10 @@ const recordOAuth2LoginFormType = structOf([
   { name: "RedirectUrl", type: "string", tags: tags("redirectUrl") },
 ]);
 
-interface RecordOAuth2LoginForm {
+type RecordOAuth2LoginForm = {
   // Additional data that will be used for creating a new auth record
   // if an existing OAuth2 account doesn't exist.
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the client's create data: a JSON object submitted as the record's field values, kept raw until the record validates them
   CreateData: { [key: string]: unknown } | null;
 
   // The name of the OAuth2 client provider (eg. "google")
@@ -328,7 +326,7 @@ interface RecordOAuth2LoginForm {
   // deprecated: use RedirectURL instead
   // RedirectUrl will be removed after dropping v0.22 support
   RedirectUrl: string;
-}
+};
 
 function validateForm(form: RecordOAuth2LoginForm, collection: Collection): Error | null {
   const checkProviderName: RuleFunc = (value) => {
@@ -399,6 +397,7 @@ interface OAuth2Submit {
   collection: Collection;
   providerName: string;
   oauth2User: AuthUser;
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the create data (same JSON object as CreateData), passed on as the record's field values
   createData: { [key: string]: unknown } | null;
   record: Record | undefined;
   isNewRecord: boolean;
@@ -410,10 +409,8 @@ interface OAuth2Submit {
 
 // the create payload of a new record; avatarField is the mapped file field
 // when the avatar should be downloaded into it
-function oauth2CreatePayload(
-  app: RecordsApp,
-  s: OAuth2Submit,
-): { payload: { [key: string]: unknown }; avatarField: string } {
+function oauth2CreatePayload(app: RecordsApp, s: OAuth2Submit) {
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the create payload: a JSON object of the record's field values, kept raw until the record validates them
   const payload: { [key: string]: unknown } = {};
   for (const [k, v] of Object.entries(s.createData ?? {})) {
     setOwn(payload, k, v);
@@ -591,6 +588,7 @@ function sendOAuth2RecordCreateRequest(
   txApp: App,
   e: RequestEvent,
   s: OAuth2Submit,
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the create payload: a JSON object of the record's field values, kept raw until the record validates them
   payload: { [key: string]: unknown },
   avatarField: string,
 ): Record {

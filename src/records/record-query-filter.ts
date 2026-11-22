@@ -246,6 +246,7 @@ export function canAccessRecord(
     return query;
   }
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- the first column of a dbx row, which dbx types as unknown (Array<unknown>); the 0 is only the no-row default
   let exists: unknown = 0;
   try {
     [exists] = query.row();
@@ -270,6 +271,7 @@ export async function canAccessRecordAsync(
     return query;
   }
 
+  // oxlint-disable-next-line quality/no-known-value-widening -- the first column of a dbx row, which dbx types as unknown (Array<unknown>); the 0 is only the no-row default
   let exists: unknown = 0;
   try {
     [exists] = await query.rowAsync();

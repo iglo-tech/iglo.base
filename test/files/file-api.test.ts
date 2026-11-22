@@ -33,6 +33,7 @@ import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { updateCollection } from "@test/scenarios/prepare";
 import { startServer } from "@test/support/executable";
 import type { RunningServer } from "@test/support/executable";
+import type { JsonObject } from "@test/support/json";
 
 const roots: Array<string> = [];
 const servers: Array<RunningServer> = [];
@@ -132,7 +133,7 @@ test("TestConcurrentThumbsGeneration", async () => {
       `${size}_300_Jsjq7RdBgA.png`,
     );
     expect(existsSync(thumb)).toBe(true);
-    const attrs = JSON.parse(readFileSync(thumb + ".attrs", "utf8")) as Record<string, unknown>;
+    const attrs = JSON.parse(readFileSync(thumb + ".attrs", "utf8")) as JsonObject;
     expect(attrs["user.content_type"]).toBe("image/png");
     // no metadata: json/v2 writes the nil map as {}
     expect(attrs["user.metadata"]).toEqual({});

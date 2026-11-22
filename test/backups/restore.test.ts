@@ -22,14 +22,14 @@ import { NewLocal } from "@/tools/filesystem/filesystem";
 import { eventually, superuserToken } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { executable, freePort, startServer, tempDir } from "@test/support/executable";
-import type { RunningServer } from "@test/support/executable";
+import type { RunningServer, RunResult } from "@test/support/executable";
 
 const asSuperuser = { Authorization: superuserToken };
 
 // a little past upstream's 1 second before the restore starts
 const restoreDelayMs = 1200;
 
-let cleanups: Array<() => void | Promise<unknown>> = [];
+let cleanups: Array<() => void | Promise<RunResult | number>> = [];
 
 afterEach(async () => {
   for (const cleanup of cleanups) {

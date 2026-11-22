@@ -65,7 +65,7 @@ export function isNoRowsError(err: unknown): boolean {
 
 // a number for a safe integer, the bigint itself otherwise (an unsafe
 // bigint converts to a number of at least 2^53, which is not safe either)
-export function narrowInteger(value: unknown): unknown {
+export function narrowInteger<T>(value: T): T | number {
   if (typeof value === "bigint") {
     const n = Number(value);
     if (Number.isSafeInteger(n)) {
@@ -114,7 +114,11 @@ function hasDuplicates(names: Array<string>): boolean {
 // column's values
 export type ReadMode = "one" | "all" | "row" | "column";
 
-export function readRows(rows: Rows, mode: ReadMode): unknown {
+// what readRows returns: a row object (one), an array of row objects (all),
+// or an array of values (row, column)
+export type ReadValue = Row | Array<unknown>;
+
+export function readRows(rows: Rows, mode: ReadMode): ReadValue {
   switch (mode) {
     case "one":
       return rows.first();

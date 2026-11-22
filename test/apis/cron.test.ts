@@ -83,7 +83,7 @@ function ids(app: TestApp, table: string): Array<string> {
   return app.databases.db().newQuery(`SELECT id FROM ${table} ORDER BY id`).column<string>();
 }
 
-function withTestJob(app: TestApp): { calls: () => number } {
+function withTestJob(app: TestApp) {
   let calls = 0;
   app.cron.add("test", "* * * * *", () => {
     calls++;

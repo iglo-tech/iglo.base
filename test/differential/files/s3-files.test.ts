@@ -32,11 +32,13 @@ import { eventually } from "@test/scenarios/cron";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { startS3Proxy } from "@test/support/s3-proxy";
 import type { S3Proxy } from "@test/support/s3-proxy";
 import { startUpstream } from "@test/support/upstream";
 import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
 import type { Versitygw } from "@test/support/versitygw";
+import type { JsonObject } from "@test/support/json";
 
 const timeout = 120_000;
 
@@ -44,7 +46,7 @@ setDefaultTimeout(30_000);
 
 interface Server {
   url: string;
-  stop(): Promise<unknown>;
+  stop(): Promise<RunResult | void>;
 }
 
 interface Target {
@@ -92,7 +94,7 @@ function rawFilesystem(bucket: string): S3System {
   );
 }
 
-function s3Settings(endpoint: string, bucket: string): Record<string, unknown> {
+function s3Settings(endpoint: string, bucket: string): JsonObject {
   return {
     enabled: true,
     bucket,
@@ -104,7 +106,7 @@ function s3Settings(endpoint: string, bucket: string): Record<string, unknown> {
   };
 }
 
-async function useS3(url: string, s3: Record<string, unknown>): Promise<void> {
+async function useS3(url: string, s3: JsonObject): Promise<void> {
   const res = await req(url, "PATCH", "/api/settings", JSON.stringify({ s3 }), "application/json");
   expect(`${res.status} ${res.text}`).toStartWith("200");
 }
@@ -198,13 +200,13 @@ async function same(
   return [upRes, igRes];
 }
 
-function jsonBody(value: unknown): { body: string; contentType: string } {
+function jsonBody(value: unknown) {
   return { body: JSON.stringify(value), contentType: "application/json" };
 }
 
 type BodyPart = Parameters<typeof multipartBody>[0][number];
 
-function formBody(parts: Array<BodyPart>, side: Side): { body: Uint8Array; contentType: string } {
+function formBody(parts: Array<BodyPart>, side: Side) {
   const boundary = "s3filesboundary";
   return {
     body: multipartBody(parts, boundary, side),
@@ -223,7 +225,7 @@ const textFile = (
 });
 
 async function sideRecord(ref: string, res: Res, target: Target): Promise<void> {
-  target.side.records.set(ref, JSON.parse(res.text) as Record<string, unknown>);
+  target.side.records.set(ref, JSON.parse(res.text) as JsonObject);
 }
 
 function recordId(side: Side, ref: string): string {
@@ -249,8 +251,8 @@ async function createBoth(collection: string, ref: string, parts: Array<BodyPart
 
 // pairs the file names of a record created without a compared response
 async function compareBucketsPaired(ref: string): Promise<Array<string>> {
-  const a = up.side.records.get(ref) as Record<string, unknown>;
-  const b = ig.side.records.get(ref) as Record<string, unknown>;
+  const a = up.side.records.get(ref) as JsonObject;
+  const b = ig.side.records.get(ref) as JsonObject;
   const out: Array<string> = [];
   compareJSON(a, b, "$", pairing, out);
   out.push(...(await compareBuckets()));
@@ -302,7 +304,7 @@ const batch = (
   return (side) =>
     formBody([{ name: "@jsonPayload", value: JSON.stringify({ requests }) }, ...files(side)], side);
 };
-const post = (collection: string, body: unknown = {}): unknown => ({
+const post = (collection: string, body: unknown = {}) => ({
   method: "POST",
   url: `/api/collections/${collection}/records`,
   body,
@@ -328,7 +330,7 @@ beforeAll(async () => {
   try {
     for (const def of collections) {
       // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
-      const body = JSON.parse(JSON.stringify(def)) as { fields: Array<Record<string, unknown>> };
+      const body = JSON.parse(JSON.stringify(def)) as { fields: Array<Partial<JsonObject>> };
       for (const f of body.fields) {
         if (typeof f["collectionId"] === "string") {
           f["collectionId"] = collectionIds.get(f["collectionId"]);

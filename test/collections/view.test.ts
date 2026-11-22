@@ -20,7 +20,7 @@ import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown): Error | null {
+function errorOf(fn: () => void): Error | null {
   try {
     fn();
     return null;
@@ -634,6 +634,7 @@ describe("TestCreateViewFieldsWithNumberOnlyInt", () => {
       throw err;
     }
 
+    // oxlint-disable-next-line quality/no-known-value-widening -- looked up by a field name that may be absent (Go map lookup), so the key type stays string
     const onlyInts: Record<string, boolean> = {
       count: true,
       total: false,

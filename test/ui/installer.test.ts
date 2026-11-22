@@ -7,12 +7,13 @@ import { join } from "node:path";
 
 import { startServer, tempDir } from "@test/support/executable";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
+import type { JsonObject } from "@test/support/json";
 
 const installerLink = /\n(http:\/\/127\.0\.0\.1:\d+)\/_\/#\/pbinstall\/([\w-]+\.[\w-]+\.[\w-]+)\n/;
 
-function payload(token: string): Record<string, unknown> {
+function payload(token: string): JsonObject {
   const part = token.split(".")[1] ?? "";
-  return JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as Record<string, unknown>;
+  return JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as JsonObject;
 }
 
 describe("installer", () => {

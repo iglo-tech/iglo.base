@@ -3,6 +3,7 @@ import { cookieParse, cookieSerialize } from "@sdk/tools/cookie";
 import type { SerializeOptions } from "@sdk/tools/cookie";
 import { isTokenExpired, getTokenPayload } from "@sdk/tools/jwt";
 import type { RecordModel } from "@sdk/tools/dtos";
+import type { JsonObject } from "@sdk/tools/json";
 
 export type AuthRecord = RecordModel | null;
 
@@ -11,6 +12,9 @@ export type AuthModel = AuthRecord; // for backward compatibility
 export type OnStoreChangeFunc = (token: string, record: AuthRecord) => void;
 
 const defaultCookieKey = "pb_auth";
+
+// oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the stored record is the wire JSON of the auth record; its fields are copied in and out with their values unchanged (RecordModel fields are loose)
+type RawAuthData = { token: string; record: Record<string, unknown> | null };
 
 /**
  * Base AuthStore class that stores the auth state in runtime memory (aka. only for the duration of the store instane).
@@ -135,14 +139,14 @@ export class BaseAuthStore {
   loadFromCookie(cookie: string, key = defaultCookieKey): void {
     const rawData: unknown = cookieParse(cookie || "")[key] || "";
 
-    let data: Record<string, unknown> = {};
+    let data: JsonObject = {};
     try {
       const parsed: unknown = JSON.parse(rawData as string);
       // normalize
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
         data = {};
       } else {
-        data = parsed as Record<string, unknown>;
+        data = parsed as JsonObject;
       }
     } catch {
       // not valid JSON: keep the empty data
@@ -186,11 +190,11 @@ export class BaseAuthStore {
     // merge with the user defined options
     options = Object.assign({}, defaultOptions, options);
 
-    const rawData: { token: string; record: Record<string, unknown> | null } = {
+    const rawData: RawAuthData = {
       token: this.token,
       record: this.record
         ? // oxlint-disable-next-line unicorn/prefer-structured-clone -- JSON round trip is the wire shape: structuredClone would keep undefined fields and Dates
-          (JSON.parse(JSON.stringify(this.record)) as Record<string, unknown>)
+          (JSON.parse(JSON.stringify(this.record)) as RecordModel)
         : null,
     };
 

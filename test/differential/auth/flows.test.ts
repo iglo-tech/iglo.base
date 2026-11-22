@@ -17,8 +17,10 @@ import { queryRows } from "@test/scenarios/record-checks";
 import { superuserToken } from "@test/scenarios/record-crud";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { startServer } from "@test/support/executable";
+import type { RunResult } from "@test/support/executable";
 import { hostHasSendmail } from "@test/support/sendmail";
 import { startUpstream } from "@test/support/upstream";
+import type { JsonObject } from "@test/support/json";
 
 const pw = "1234567890";
 const userAgent = "iglo-base-auth-flows/1.0";
@@ -26,7 +28,8 @@ const userAgent = "iglo-base-auth-flows/1.0";
 interface Server {
   url: string;
   dataDir: string;
-  stop(): Promise<unknown>;
+  // the iglo.base process's RunResult, or nothing for upstream
+  stop(): Promise<RunResult | void>;
 }
 
 const roots: Array<string> = [];
@@ -70,7 +73,7 @@ async function post(
   path: string,
   body: unknown,
   headers: Record<string, string> = {},
-): Promise<{ status: number; json: { [key: string]: unknown } }> {
+): Promise<{ status: number; json: JsonObject }> {
   const res = await fetch(server.url + path, {
     method: "POST",
     headers: { "Content-Type": "application/json", "User-Agent": userAgent, ...headers },
@@ -80,12 +83,7 @@ async function post(
   return { status: res.status, json: text === "" ? {} : JSON.parse(text) };
 }
 
-function login(
-  server: Server,
-  collection: string,
-  identity: string,
-  extra: Record<string, unknown> = {},
-) {
+function login(server: Server, collection: string, identity: string, extra: JsonObject = {}) {
   return post(server, `/api/collections/${collection}/auth-with-password`, {
     identity,
     password: pw,

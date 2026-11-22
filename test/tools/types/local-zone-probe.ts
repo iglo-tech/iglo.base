@@ -6,7 +6,7 @@ import type { DateTime } from "@/tools/types/datetime";
 
 const at = (iso: string): DateTime => nowDateTime({ now: () => new Date(iso) });
 
-const cases: Record<string, () => string | number> = {
+const cases = {
   // a parsed numeric offset that matches Local is Local
   "parsed +01:00, +1 day over the spring change": () =>
     parseDateTime("2024-03-30T12:00:00+01:00").addDate(0, 0, 1).string(),

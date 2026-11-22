@@ -38,7 +38,7 @@ import type { HttpRequest } from "@/server/request";
 import { isRereader, readAll } from "@/server/rereadable-read-closer";
 import type { ResponseWriter } from "@/server/router";
 import { unmarshalJSON, unmarshalRequestData } from "@/server/unmarshal-request-data";
-import type { MapRef, RequestData, StructType } from "@/server/unmarshal-request-data";
+import type { MapRef, RequestData, StructDst, StructType } from "@/server/unmarshal-request-data";
 import { unmarshalXML } from "@/server/xml-decode";
 import type { File } from "@/tools/filesystem/file";
 import { NewFileFromMultipart } from "@/tools/filesystem/file";
@@ -135,6 +135,7 @@ export class Event extends Resolver {
   // -------------------------------------------------------------------
 
   // Get retrieves single value from the current event data store.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the event's data value for key: any value the caller set
   get(key: string): unknown {
     return this.#data.get(key);
   }
@@ -150,7 +151,7 @@ export class Event extends Resolver {
   }
 
   // SetAll saves all items from m into the current event data store.
-  setAll(m: Map<string, unknown> | Record<string, unknown>): void {
+  setAll<V>(m: Map<string, V> | Record<string, V>): void {
     for (const [k, v] of isInstance<Map<unknown, unknown>>(Map, m) ? m : Object.entries(m)) {
       this.set(k, v);
     }
@@ -325,10 +326,10 @@ export class Event extends Resolver {
   // and is the caller's (an other content type answers
   // ErrUnsupportedContentType).
   async bindBody(dst: MapRef): Promise<Error | undefined>;
-  async bindBody(dst: Record<string, unknown>, type: StructType): Promise<Error | undefined>;
+  async bindBody(dst: StructDst, type: StructType): Promise<Error | undefined>;
   async bindBody(dst: JSONUnmarshaler): Promise<Error | undefined>;
   async bindBody(
-    dst: MapRef | Record<string, unknown> | JSONUnmarshaler,
+    dst: MapRef | StructDst | JSONUnmarshaler,
     type?: StructType,
   ): Promise<Error | undefined> {
     if (this.request.contentLength === 0) {
@@ -349,7 +350,7 @@ export class Event extends Resolver {
         }
         const value = await readFirstJSONValue(this.request.body);
         if (type) {
-          unmarshalJSON(value, dst as Record<string, unknown>, type, true);
+          unmarshalJSON(value, dst as StructDst, type, true);
         } else {
           unmarshalJSON(value, dst as MapRef, undefined, true);
         }
@@ -388,7 +389,7 @@ export class Event extends Resolver {
         if (!type) {
           return new Error("xml: unsupported type: map[string]interface {}");
         }
-        unmarshalXML(await readAll(this.request.body), dst as Record<string, unknown>, type);
+        unmarshalXML(await readAll(this.request.body), dst as StructDst, type);
         return undefined;
       }
     } catch (error) {
@@ -632,11 +633,11 @@ function isContainerByte(c: number): boolean {
 
 function bindRequestData(
   data: RequestData | undefined,
-  dst: MapRef | Record<string, unknown>,
+  dst: MapRef | StructDst,
   type: StructType | undefined,
 ): void {
   if (type) {
-    unmarshalRequestData(data, dst as Record<string, unknown>, type, "", "");
+    unmarshalRequestData(data, dst as StructDst, type, "", "");
   } else {
     unmarshalRequestData(data, dst as MapRef);
   }

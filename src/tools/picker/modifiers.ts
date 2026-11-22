@@ -14,6 +14,7 @@ export type ModifierFactoryFunc = (...args: Array<string>) => Modifier;
 export interface Modifier {
   // Modify executes the modifier and returns a new modified value
   // (throws on failure).
+  // oxlint-disable-next-line quality/no-unknown-returns -- a field value of any JSON type; a modifier may return it unchanged
   modify(value: unknown): unknown;
 }
 

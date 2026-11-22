@@ -59,7 +59,7 @@ interface Request {
   body?: boolean;
 }
 
-async function send(base: string, req: Request): Promise<unknown> {
+async function send(base: string, req: Request) {
   let path = req.path;
   if (typeof path === "function") {
     path = path(await (await fetch(`${base}/_/`)).text());
@@ -169,7 +169,7 @@ describe("dashboard", () => {
         rawRequest(upstream.url, "GET", target),
         rawRequest(iglo.url, "GET", target),
       ]);
-      const pick = (r: typeof want): unknown => ({
+      const pick = (r: typeof want) => ({
         status: r.status,
         location: r.headers.get("location"),
         type: r.headers.get("content-type"),

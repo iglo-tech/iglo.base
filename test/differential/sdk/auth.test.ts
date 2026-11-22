@@ -12,11 +12,12 @@ import type { SdkEnv } from "@test/differential/sdk/harness";
 import { updateCollection } from "@test/scenarios/prepare";
 import { all, useProvider, verifiedEmail } from "@test/scenarios/record-auth-oauth2";
 import { setMFA } from "@test/scenarios/record-auth-prepare";
+import type { JsonObject } from "@test/support/json";
 
 const noMFA = ({ dataDir }: { dataDir: string }) => setMFA("users", false, "")({ dataDir });
 
 // the client's auth store as comparable data
-function store(pb: PocketBase): unknown {
+function store(pb: PocketBase) {
   return {
     token: pb.authStore.token,
     record: pb.authStore.record,
@@ -320,7 +321,7 @@ describe("mail flows", () => {
   );
 });
 
-const prepare = (user: Record<string, unknown>) => (env: { dataDir: string }) =>
+const prepare = (user: JsonObject) => (env: { dataDir: string }) =>
   all(
     noMFA,
     useProvider({ user }, (collection, provider) => {

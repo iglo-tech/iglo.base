@@ -48,6 +48,7 @@ export class Token {
   // the zero time.Time is null
   expiry: Date | null = null;
   // the raw response: a JSON object, or a query string's values
+  // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- the raw response: a JSON object of any kind of value, or the query string's values
   raw: { [key: string]: unknown } | Values | null = null;
 
   constructor(init: Partial<Token> = {}) {
@@ -71,6 +72,7 @@ export class Token {
 
   // Extra returns an extra field: a key-value pair returned by the server
   // as part of the token retrieval response.
+  // oxlint-disable-next-line quality/no-unknown-returns -- the server's response value for key: a JSON value of any kind
   extra(key: string): unknown {
     const raw = this.raw;
     if (raw === null) {
@@ -252,6 +254,7 @@ async function doTokenRoundTrip(c: TokenConfig, init: RequestInit): Promise<Toke
     }
     try {
       // no error checks for optional fields
+      // oxlint-disable-next-line quality/no-unsafe-dictionary-type -- Go map[string]any: the token response decoded as a JSON object of any kind
       token.raw = unmarshal(body, mapOf(anyType), { legacy: true }) as {
         [key: string]: unknown;
       };

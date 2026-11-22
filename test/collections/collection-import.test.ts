@@ -16,9 +16,10 @@ import { HashExp } from "@/db/dbx/expression";
 
 import { openTestApp } from "@test/collections/app";
 import type { TestCollectionsApp } from "@test/collections/app";
+import type { JsonObject } from "@test/support/json";
 
 // the error a call throws, or null (Go's returned error)
-function errorOf(fn: () => unknown): Error | null {
+function errorOf(fn: () => void): Error | null {
   try {
     fn();
     return null;
@@ -29,7 +30,7 @@ function errorOf(fn: () => unknown): Error | null {
 
 // the collections of the fixture, split by the system flag (upstream's
 // regularCollections / systemCollections)
-function countCollections(app: TestCollectionsApp): { regular: number; system: number } {
+function countCollections(app: TestCollectionsApp) {
   const regular = collectionQuery(app)
     .andWhere(new HashExp({ system: false }))
     .all<Collection>(() => new Collection());
@@ -56,7 +57,7 @@ describe("TestImportCollections", () => {
 
   const scenarios: Array<{
     name: string;
-    data: Array<Record<string, unknown>>;
+    data: Array<JsonObject>;
     deleteMissing: boolean;
     expectError: boolean;
     expectCollectionsCount: number;
@@ -186,7 +187,7 @@ describe("TestImportCollections", () => {
       expectError: false,
       expectCollectionsCount: totalCollections + 1,
       afterTestFunc: (app) => {
-        const expectedCollectionFields: Record<string, number> = {
+        const expectedCollectionFields = {
           _authOrigins: 6,
           nologin: 10,
           demo1: 19,
@@ -195,7 +196,7 @@ describe("TestImportCollections", () => {
           demo4: 16,
           demo5: 9,
           new_import: 2,
-        };
+        } satisfies Record<string, number>;
         for (const [name, expectedCount] of Object.entries(expectedCollectionFields)) {
           const collection = findCollectionByNameOrId(app, name);
 
@@ -328,7 +329,7 @@ describe("TestImportCollectionsByMarshaledJSON", () => {
 describe("TestImportCollectionsUpdateRules", () => {
   const scenarios: Array<{
     name: string;
-    data: Record<string, unknown>;
+    data: JsonObject;
     deleteMissing: boolean;
   }> = [
     {

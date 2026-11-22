@@ -64,11 +64,12 @@ import type { TestImage } from "@test/differential/files/images";
 import { copyDataDir, fixtureDir } from "@test/scenarios/fixture";
 import { superuserToken, usersToken } from "@test/scenarios/record-crud";
 import { startServer } from "@test/support/executable";
-import type { RunningServer } from "@test/support/executable";
+import type { RunResult, RunningServer } from "@test/support/executable";
 import { startUpstream } from "@test/support/upstream";
 import type { UpstreamServer } from "@test/support/upstream";
 import { startVersitygw, testS3Credentials } from "@test/support/versitygw";
 import type { Versitygw } from "@test/support/versitygw";
+import type { JsonObject } from "@test/support/json";
 
 const comparedHeaders = [
   "content-type",
@@ -176,7 +177,7 @@ function boundaryOf(res: Res): string | undefined {
   return /^multipart\/byteranges; boundary=(.+)$/.exec(res.headers.get("content-type") ?? "")?.[1];
 }
 
-function normalized(res: Res): { headers: Map<string, string | null>; body: Buffer } {
+function normalized(res: Res) {
   const boundary = boundaryOf(res);
   const headers = new Map<string, string | null>();
   for (const name of comparedHeaders) {
@@ -245,7 +246,7 @@ function servedName(res: Res): string {
 const enc = (v: unknown): string => Buffer.from(JSON.stringify(v)).toString("base64url");
 
 // a file token signed as upstream signs them (HS256), with any claims
-function signToken(claims: Record<string, unknown>, key: string): string {
+function signToken(claims: JsonObject, key: string): string {
   const unsigned = `${enc({ alg: "HS256", typ: "JWT" })}.${enc(claims)}`;
   return `${unsigned}.${createHmac("sha256", key).update(unsigned).digest("base64url")}`;
 }
@@ -283,7 +284,7 @@ function copyPreserving(source: string, target: string): void {
 
 export function serveSuite(storage: "local" | "s3"): void {
   const roots: Array<string> = [];
-  const running: Array<{ stop(): Promise<unknown> }> = [];
+  const running: Array<{ stop(): Promise<RunResult | void> }> = [];
 
   const baseBucket = "base";
   // the S3 server, on S3
@@ -310,9 +311,9 @@ export function serveSuite(storage: "local" | "s3"): void {
   }
 
   // a stored thumb's attributes, without what depends on its own bytes
-  async function thumbAttributes(store: string, file: string): Promise<unknown> {
+  async function thumbAttributes(store: string, file: string) {
     if (gw === undefined) {
-      const attrs = JSON.parse(readFileSync(file + ".attrs", "utf8")) as Record<string, unknown>;
+      const attrs = JSON.parse(readFileSync(file + ".attrs", "utf8")) as JsonObject;
       expect(attrs["md5"]).toBe(createHash("md5").update(readFileSync(file)).digest("base64"));
       return { ...attrs, md5: "" };
     }

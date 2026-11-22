@@ -94,6 +94,7 @@ function sortOf(n: number): Array<SortField> {
   return Array.from({ length: n }, (): SortField => ({ name: "id", direction: SortAsc }));
 }
 
+// oxlint-disable-next-line quality/no-unknown-returns -- resolves with the caught value of any thrown type (undefined when exec does not throw); the tests compare it with toBeUndefined and toBe
 async function execError(p: Provider): Promise<unknown> {
   try {
     await p.exec();

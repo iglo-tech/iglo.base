@@ -11,12 +11,14 @@ import type { CronConfig } from "@/tools/cron/cron";
 
 const minute = 60_000;
 
-// a clock and timers that only move on advance()
-function fakeTime(start: string): {
+interface FakeTime {
   config: Required<Pick<CronConfig, "clock" | "timers">>;
   advance(ms: number): void;
   pending(): number;
-} {
+}
+
+// a clock and timers that only move on advance()
+function fakeTime(start: string): FakeTime {
   let now = new Date(start).getTime();
   let lastId = 0;
   const timers = new Map<number, { at: number; fn: () => void }>();
@@ -53,7 +55,7 @@ function fakeTime(start: string): {
   };
 }
 
-function counting(time: ReturnType<typeof fakeTime>): { c: Cron; calls: () => number } {
+function counting(time: ReturnType<typeof fakeTime>) {
   const c = new Cron(time.config);
   let calls = 0;
   c.add("test", "* * * * *", () => {

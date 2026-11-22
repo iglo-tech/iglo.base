@@ -211,6 +211,6 @@ export function formBody(fields: Record<string, string>): URLSearchParams {
 }
 
 /** The app's origin header for same-site POSTs (the browser sends it on a form submit). */
-export function sameOrigin(app: string): Record<string, string> {
+export function sameOrigin(app: string) {
   return { Origin: app };
 }

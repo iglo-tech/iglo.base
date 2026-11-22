@@ -281,7 +281,8 @@ test("RecordExpand", () => {
   expect(expand).toEqual({});
 
   const data1 = { a: 123n, b: 456n };
-  const data2: { [key: string]: unknown } = { c: 123n };
+  type ExpandData = { c: bigint; d?: bigint };
+  const data2: ExpandData = { c: 123n };
   record.setExpand(data1);
   record.setExpand(data2); // should overwrite the previous call
 
@@ -351,7 +352,7 @@ describe("RecordMergeExpandNilCheck", () => {
   const collection = newBaseCollection("test");
   collection.id = "_pbc_123";
 
-  const scenarios: Array<[string, { [key: string]: unknown } | null, string]> = [
+  const scenarios: Array<[string, { [key: string]: Record } | null, string]> = [
     ["nil expand", null, `{"collectionId":"_pbc_123","collectionName":"test","id":""}`],
     ["empty expand", {}, `{"collectionId":"_pbc_123","collectionName":"test","id":""}`],
     [
@@ -498,7 +499,7 @@ test("RecordLoad", () => {
 function getterTable<T>(
   name: string,
   scenarios: Array<[unknown, T]>,
-  getter: (record: Record) => unknown,
+  getter: (record: Record) => T,
   check: (result: unknown, expected: T) => void = (result, expected) =>
     expect(result).toEqual(expected),
 ): void {

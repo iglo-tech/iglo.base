@@ -113,7 +113,7 @@ async function client(): Promise<void> {
                 ) as RegExpExecArray
               )[1],
             ) / 1024;
-          const cells: Record<string, unknown> = {};
+          const cells: Record<string, Awaited<ReturnType<typeof load>>> = {};
           for (const name of workloadNames) {
             guard();
             const ms = (name === "slow" ? 2 : 1) * seconds * 1000;

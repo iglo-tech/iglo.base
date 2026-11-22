@@ -56,7 +56,7 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function users(dump: PbDataDump): { [key: string]: unknown } | undefined {
+function users(dump: PbDataDump) {
   return dump.collections.find((c) => c.name === "users");
 }
 
@@ -65,7 +65,7 @@ const secretPattern = /"secret":"([^"]*)"/g;
 
 // the `_collections` rows with the generated values replaced, after
 // checking their formats
-function normalizedCollections(dump: PbDataDump): Array<{ [key: string]: unknown }> {
+function normalizedCollections(dump: PbDataDump) {
   return dump.collections.map((row) => {
     expect(row.created).toMatch(datePattern);
     expect(row.updated).toMatch(datePattern);

@@ -21,6 +21,7 @@ afterEach(() => {
 });
 
 // a request that the local server answers with the status and body given
+// oxlint-disable-next-line quality/no-unknown-returns -- resolves with the value the request rejected with, of any thrown type (the tests check it with toBeInstanceOf and as ResponseError)
 async function failureOf(status: number, body: string): Promise<unknown> {
   const recorder = startS3Recorder(() => new Response(body, { status }));
   recorders.push(recorder);
