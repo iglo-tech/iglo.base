@@ -105,7 +105,7 @@ export class AppBinding {
 }
 
 // func(txApp core.App) error
-// oxlint-disable-next-line quality/no-unknown-returns -- returns the migration file's own function, passed through unchanged: its signature is not known here
+// oxlint-disable-next-line quality/no-unknown-returns -- returns the migration file's own function, of any signature, passed through unchanged; its inferred type is Function, which the lint rule bans, and an explicit signature would need an assertion
 function txFunc(m: Membrane, fn: unknown): unknown {
   if (typeof fn !== "function") {
     throw new m.vm.TypeError(
