@@ -16,7 +16,7 @@ SDK releases are automatic: a version bump of `sdk/package.json` merged to `main
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| L.4 | fix | `task/L.4-type-assertions` (#114) | 1 | Part 1, type-only fixes: 3,366 → 3,228 (typed Go-JSON setters, dbx read overloads), emitted JS identical; rule stays off pending the owner (Needs you) |
+| L.4 | review | `task/L.4-type-assertions` (#114) | 2 | Part 1, type-only fixes: 3,366 → 3,237 (Go-JSON setters typed from fieldTypes), emitted JS identical; rule stays off pending the owner (Needs you) |
 
 
 
