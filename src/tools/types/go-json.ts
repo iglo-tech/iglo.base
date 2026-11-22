@@ -1145,6 +1145,15 @@ export function unmarshalMapInto(
   return convertObject(node, elem, existing, "map", opts.legacy === true);
 }
 
+// The setter of one member of the struct T. Its parameter is declared with
+// method syntax, which TypeScript checks bivariantly: a setter typed for
+// T[K] is accepted in the table unmarshalStruct reads, whose parameter is
+// unknown. That is the contract with convert(): the GoType in fieldTypes
+// for a member yields the value of the member's type in T, and each caller
+// names T and its fieldTypes together.
+export type FieldSetter<V> = { bivarianceHack(value: V): void }["bivarianceHack"];
+export type FieldSetters<T> = { [K in keyof T]?: FieldSetter<T[K]> };
+
 // json.Unmarshal into a Go struct whose fields are named in setters
 // (case-sensitive names, unknown members ignored). Members are applied in
 // order while reading, so a later error keeps earlier members, as Go's
@@ -1152,9 +1161,9 @@ export function unmarshalMapInto(
 // v2 treats every error as fatal); with `legacy` (v1) it is skipped and
 // reported after the rest are applied. A JSON null calls onNull (the
 // struct's zero value).
-export function unmarshalStruct(
+export function unmarshalStruct<T>(
   data: string | Uint8Array,
-  setters: Record<string, (value: unknown) => void>,
+  setters: FieldSetters<T>,
   fieldTypes: Record<string, GoType>,
   onNull: () => void,
   opts: UnmarshalOptions = {},
@@ -1165,7 +1174,10 @@ export function unmarshalStruct(
   const c = p.s[p.i];
   if (c === "{") {
     p.object(1, (name, value) => {
-      const set = Object.hasOwn(setters, name) ? setters[name] : undefined;
+      // The one cast here: the names are JSON member names, which FieldSetters<T> does not index by string. Erased at compile time, so the emitted code is unchanged.
+      const set = Object.hasOwn(setters, name)
+        ? (setters as Record<string, FieldSetter<unknown> | undefined>)[name]
+        : undefined;
       const t = Object.hasOwn(fieldTypes, name) ? fieldTypes[name] : undefined;
       if (set === undefined || t === undefined) {
         return;

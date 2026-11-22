@@ -529,21 +529,21 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct(
+    unmarshalStruct<TextField>(
       data,
       {
-        name: (v) => (this.name = v as string),
-        id: (v) => (this.id = v as string),
-        system: (v) => (this.system = v as boolean),
-        hidden: (v) => (this.hidden = v as boolean),
-        presentable: (v) => (this.presentable = v as boolean),
-        help: (v) => (this.help = v as string),
-        min: (v) => (this.min = v as GoInt),
-        max: (v) => (this.max = v as GoInt),
-        pattern: (v) => (this.pattern = v as string),
-        autogeneratePattern: (v) => (this.autogeneratePattern = v as string),
-        required: (v) => (this.required = v as boolean),
-        primaryKey: (v) => (this.primaryKey = v as boolean),
+        name: (v) => (this.name = v),
+        id: (v) => (this.id = v),
+        system: (v) => (this.system = v),
+        hidden: (v) => (this.hidden = v),
+        presentable: (v) => (this.presentable = v),
+        help: (v) => (this.help = v),
+        min: (v) => (this.min = v),
+        max: (v) => (this.max = v),
+        pattern: (v) => (this.pattern = v),
+        autogeneratePattern: (v) => (this.autogeneratePattern = v),
+        required: (v) => (this.required = v),
+        primaryKey: (v) => (this.primaryKey = v),
       },
       {
         name: stringType,

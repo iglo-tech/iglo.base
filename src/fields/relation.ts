@@ -417,20 +417,20 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct(
+    unmarshalStruct<RelationField>(
       data,
       {
-        name: (v) => (this.name = v as string),
-        id: (v) => (this.id = v as string),
-        system: (v) => (this.system = v as boolean),
-        hidden: (v) => (this.hidden = v as boolean),
-        presentable: (v) => (this.presentable = v as boolean),
-        help: (v) => (this.help = v as string),
-        collectionId: (v) => (this.collectionId = v as string),
-        cascadeDelete: (v) => (this.cascadeDelete = v as boolean),
-        minSelect: (v) => (this.minSelect = v as GoInt),
-        maxSelect: (v) => (this.maxSelect = v as GoInt),
-        required: (v) => (this.required = v as boolean),
+        name: (v) => (this.name = v),
+        id: (v) => (this.id = v),
+        system: (v) => (this.system = v),
+        hidden: (v) => (this.hidden = v),
+        presentable: (v) => (this.presentable = v),
+        help: (v) => (this.help = v),
+        collectionId: (v) => (this.collectionId = v),
+        cascadeDelete: (v) => (this.cascadeDelete = v),
+        minSelect: (v) => (this.minSelect = v),
+        maxSelect: (v) => (this.maxSelect = v),
+        required: (v) => (this.required = v),
       },
       {
         name: stringType,

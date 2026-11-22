@@ -280,19 +280,19 @@ export class NumberField implements Field, SetterFinder {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct(
+    unmarshalStruct<NumberField>(
       data,
       {
-        name: (v) => (this.name = v as string),
-        id: (v) => (this.id = v as string),
-        system: (v) => (this.system = v as boolean),
-        hidden: (v) => (this.hidden = v as boolean),
-        presentable: (v) => (this.presentable = v as boolean),
-        help: (v) => (this.help = v as string),
+        name: (v) => (this.name = v),
+        id: (v) => (this.id = v),
+        system: (v) => (this.system = v),
+        hidden: (v) => (this.hidden = v),
+        presentable: (v) => (this.presentable = v),
+        help: (v) => (this.help = v),
         min: (v) => (this.min = float64Pointer(v)),
         max: (v) => (this.max = float64Pointer(v)),
-        onlyInt: (v) => (this.onlyInt = v as boolean),
-        required: (v) => (this.required = v as boolean),
+        onlyInt: (v) => (this.onlyInt = v),
+        required: (v) => (this.required = v),
       },
       {
         name: stringType,
