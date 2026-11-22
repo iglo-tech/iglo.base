@@ -8,13 +8,15 @@ Released [v1.3.0](https://github.com/iglo-tech/iglo.base/releases/tag/v1.3.0) (2
 
 ## Needs you
 
-Nothing. SDK releases are automatic: a version bump of `sdk/package.json` merged to `main` publishes to npm by OIDC trusted publishing (validated 2026-11-12 by `1.0.1-rc.0`, [#100](https://github.com/iglo-tech/iglo.base/pull/100), with provenance, under `next`).
+- **L.4 policy (asked 2026-11-22):** `no-unsafe-type-assertion` reports 3,366; almost none has a type-only fix (824 index reads under `noUncheckedIndexedAccess`, 74 caught errors, 87 `any`-sourced incl. SDK `Loose`). Options: A fix all with runtime guards, B ~3,000 disables, C real type fixes then keep the rule off with a reason (lead's pick). Real type fixes (typed Go-JSON setters, ~129) are in both A and C and proceed now.
+
+SDK releases are automatic: a version bump of `sdk/package.json` merged to `main` publishes to npm by OIDC trusted publishing (validated 2026-11-12 by `1.0.1-rc.0`, [#100](https://github.com/iglo-tech/iglo.base/pull/100), with provenance, under `next`).
 
 ## Active
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| L.4 | worker | `task/L.4-type-assertions` | 0 | Owner 2026-11-21 via D44: `no-unsafe-type-assertion` (3,192 at L.1 + ~220 casts from L.2); last of the twelve rules |
+| L.4 | worker | `task/L.4-type-assertions` | 0 | Worker measured 3,366 and stopped for a policy choice (Needs you). Now: real type fixes only (typed Go-JSON setters etc.); rule stays off until the owner answers |
 
 
 
