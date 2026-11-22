@@ -16,7 +16,7 @@ SDK releases are automatic: a version bump of `sdk/package.json` merged to `main
 
 | ID | Stage | Branch / PR | Council round | Notes |
 |---|---|---|---|---|
-| L.4 | review | `task/L.4-type-assertions` (#114) | 2 | Part 1, type-only fixes: 3,366 → 3,237 (Go-JSON setters typed from fieldTypes), emitted JS identical; rule stays off pending the owner (Needs you) |
+| L.4 | waiting for owner | — | — | Part 1 merged (#114). The rest of `no-unsafe-type-assertion` (3,237) waits for the owner's policy choice (Needs you) |
 
 
 
@@ -24,6 +24,7 @@ SDK releases are automatic: a version bump of `sdk/package.json` merged to `main
 
 | ID | PR | Merged | Notes |
 |---|---|---|---|
+| L.4 part 1 | [#114](https://github.com/iglo-tech/iglo.base/pull/114) | 2026-11-22 (`4e675aa1`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. Type-only: Go-JSON setters typed from `fieldTypes` via a phantom `GoType<V>` (strict, 25 mismatch probes fail to compile); four slice setters now admit `undefined`; dbx read casts kept (overloads unchecked). 3,366 → 3,237; emitted JS identical (469 files), SDK declarations identical. Check 19,026/0. Backlog: `oauth2/oidc.ts:61`, `oauth2/token.ts:297` casts removable type-only; a typed `unmarshal<V>` for the owner round |
 | L.3 | [#113](https://github.com/iglo-tech/iglo.base/pull/113) | 2026-11-22 (`e2eaa60f`) | Three review rounds (Opus; Haiku worker and fixers); round 3 approved. Three quality/* rules on: 688/546/306 findings fixed; 312 reasoned disables (caught errors, Go/VM `any`, runtime-keyed tables, shared aliases, SDK option bags; round 1 replaced 15 with real types); emitted JS identical except types-only files and one test `await`; SDK public type `NextCookieStore.set?` returns `void`. Check 19,026/0, reference 4,444/0. Backlog: shared JSON type in `src` would remove some disables; `Row` could use the SQLite value union; one oauth2 reference flake ("mapped username that is taken", 400) seen once |
 | L.2 | [#112](https://github.com/iglo-tech/iglo.base/pull/112) | 2026-11-21 (`77da4d10`) | One review round (Opus, approve; Haiku worker). Eight type-safety rules on, 644 findings fixed (569 counted with the test-support override), test-support files no longer relaxed for them; 24 reasoned disables (16 Go-style throws read by callers, 11 SDK loose-shape type tests); ~220 casts left for L.4. Check 19,026/0, reference 4,443/1 (known concurrent-thumb flake on upstream's side; file reruns 71/71). Backlog: `select ;` on `/api/sql` gets a different SQLite message (older, D26) |
 | L.1 | [#111](https://github.com/iglo-tech/iglo.base/pull/111) | 2026-11-21 (`3720fe1`) | Two review rounds (Opus; Haiku worker and fixer); round 2 approved. `oxlint.config.ts` spreads @cloudflare/oxlint-config without React/jsx-a11y (owner); ~14k findings fixed; exceptions with reasons (charset names, Go `\xNN`, `String.raw` + Bun non-ASCII lowering, SDK ES2021/`instanceof` parity D36, CLI console); lint builds the SDK first. 12 type-safety rules (5,286) left to L.2–L.4. Check 19,026/0, reference 4,444/0. Backlog: Bun `String.raw` non-ASCII bug unreported (outside our repos) |
