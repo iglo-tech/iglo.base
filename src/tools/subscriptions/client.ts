@@ -120,8 +120,8 @@ export class Client {
           unmarshalStruct(
             raw,
             {
-              query: (v) => (rawQuery = v as typeof rawQuery),
-              headers: (v) => (rawHeaders = v as typeof rawHeaders),
+              query: (v) => (rawQuery = v),
+              headers: (v) => (rawHeaders = v),
             },
             { query: mapOf(anyType), headers: mapOf(anyType) },
             () => {},

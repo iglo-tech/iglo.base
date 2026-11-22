@@ -249,13 +249,13 @@ export class AutodateField implements Field, SetterFinder, RecordInterceptor {
     unmarshalStruct(
       data,
       {
-        name: (v) => (this.name = v as string),
-        id: (v) => (this.id = v as string),
-        system: (v) => (this.system = v as boolean),
-        hidden: (v) => (this.hidden = v as boolean),
-        presentable: (v) => (this.presentable = v as boolean),
-        onCreate: (v) => (this.onCreate = v as boolean),
-        onUpdate: (v) => (this.onUpdate = v as boolean),
+        name: (v) => (this.name = v),
+        id: (v) => (this.id = v),
+        system: (v) => (this.system = v),
+        hidden: (v) => (this.hidden = v),
+        presentable: (v) => (this.presentable = v),
+        onCreate: (v) => (this.onCreate = v),
+        onUpdate: (v) => (this.onUpdate = v),
       },
       {
         name: stringType,

@@ -185,13 +185,13 @@ export class GeoPointField implements Field {
     unmarshalStruct(
       data,
       {
-        name: (v) => (this.name = v as string),
-        id: (v) => (this.id = v as string),
-        system: (v) => (this.system = v as boolean),
-        hidden: (v) => (this.hidden = v as boolean),
-        presentable: (v) => (this.presentable = v as boolean),
-        help: (v) => (this.help = v as string),
-        required: (v) => (this.required = v as boolean),
+        name: (v) => (this.name = v),
+        id: (v) => (this.id = v),
+        system: (v) => (this.system = v),
+        hidden: (v) => (this.hidden = v),
+        presentable: (v) => (this.presentable = v),
+        help: (v) => (this.help = v),
+        required: (v) => (this.required = v),
       },
       {
         name: stringType,

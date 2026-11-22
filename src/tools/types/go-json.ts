@@ -897,8 +897,14 @@ export interface UnmarshalOptions {
   allowDuplicateNames?: boolean;
 }
 
-// The Go destination types the ported code unmarshals into.
-export type GoType =
+// The Go destination types the ported code unmarshals into. V is the
+// TypeScript type of a value decoded as this type (convert returns it, see
+// ValueOf): e.g. a slice decodes to Array<V> | undefined, since a JSON null
+// leaves a nil slice. V exists only for the type checker: the property
+// below is never set, so the emitted code is the same as without it.
+declare const goValue: unique symbol;
+
+type GoKind =
   | { kind: "any" }
   | { kind: "string" }
   | { kind: "int" }
@@ -908,18 +914,23 @@ export type GoType =
   | { kind: "slice"; elem: GoType }
   | { kind: "map"; elem: GoType };
 
-export const anyType: GoType = { kind: "any" };
-export const stringType: GoType = { kind: "string" };
-export const intType: GoType = { kind: "int" };
-export const int64Type: GoType = { kind: "int64" };
-export const float64Type: GoType = { kind: "float64" };
-export const boolType: GoType = { kind: "bool" };
+export type GoType<V = unknown> = GoKind & { readonly [goValue]?: () => V };
 
-export function sliceOf(elem: GoType): GoType {
+// The type of a value decoded as G (unknown for an untyped GoType).
+export type ValueOf<G> = G extends GoType<infer V> ? V : never;
+
+export const anyType: GoType<unknown> = { kind: "any" };
+export const stringType: GoType<string> = { kind: "string" };
+export const intType: GoType<GoInt> = { kind: "int" };
+export const int64Type: GoType<GoInt> = { kind: "int64" };
+export const float64Type: GoType<number> = { kind: "float64" };
+export const boolType: GoType<boolean> = { kind: "bool" };
+
+export function sliceOf<V>(elem: GoType<V>): GoType<Array<V> | undefined> {
   return { kind: "slice", elem };
 }
 
-export function mapOf(elem: GoType): GoType {
+export function mapOf<V>(elem: GoType<V>): GoType<Record<string, V> | undefined> {
   return { kind: "map", elem };
 }
 
@@ -1145,6 +1156,14 @@ export function unmarshalMapInto(
   return convertObject(node, elem, existing, "map", opts.legacy === true);
 }
 
+// The setter of each member named in the struct's fieldTypes: its parameter
+// is the type the member decodes to (ValueOf), so a setter for another type
+// is a compile error, and so is a name that is not a member. Function-typed
+// (not method syntax), so the parameter is checked contravariantly.
+export type FieldSetters<F extends Record<string, GoType>> = {
+  [K in keyof F]?: (value: ValueOf<F[K]>) => void;
+};
+
 // json.Unmarshal into a Go struct whose fields are named in setters
 // (case-sensitive names, unknown members ignored). Members are applied in
 // order while reading, so a later error keeps earlier members, as Go's
@@ -1152,10 +1171,10 @@ export function unmarshalMapInto(
 // v2 treats every error as fatal); with `legacy` (v1) it is skipped and
 // reported after the rest are applied. A JSON null calls onNull (the
 // struct's zero value).
-export function unmarshalStruct(
+export function unmarshalStruct<F extends Record<string, GoType>>(
   data: string | Uint8Array,
-  setters: Record<string, (value: unknown) => void>,
-  fieldTypes: Record<string, GoType>,
+  setters: FieldSetters<F>,
+  fieldTypes: F,
   onNull: () => void,
   opts: UnmarshalOptions = {},
 ): void {
@@ -1165,7 +1184,10 @@ export function unmarshalStruct(
   const c = p.s[p.i];
   if (c === "{") {
     p.object(1, (name, value) => {
-      const set = Object.hasOwn(setters, name) ? setters[name] : undefined;
+      // The one cast here: the names are JSON member names, which FieldSetters<F> does not index by string. Each setter is called with convert's value for its member's GoType, which the typed fieldTypes made match the setter (see ValueOf). Erased at compile time, so the emitted code is unchanged.
+      const set = Object.hasOwn(setters, name)
+        ? (setters as Record<string, ((value: unknown) => void) | undefined>)[name]
+        : undefined;
       const t = Object.hasOwn(fieldTypes, name) ? fieldTypes[name] : undefined;
       if (set === undefined || t === undefined) {
         return;
