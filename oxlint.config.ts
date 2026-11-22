@@ -126,8 +126,9 @@ export default defineConfig({
       },
     },
     // L.1 open items (D44): these rules still report issues and stay off until
-    // their task fixes them. L.4 owns no-unsafe-type-assertion. It is removed
-    // from this list when its issues are fixed; the list is empty when L.4 is done.
+    // their task fixes them. L.4 owner decision pending: no-unsafe-type-assertion
+    // has findings that need runtime guards or a reasoned disable (L.4 part 3 fixed
+    // the type-only ones). The rule is removed from this list when that decision is made.
     {
       files: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       rules: {
