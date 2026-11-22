@@ -535,7 +535,7 @@ export class Query {
   one<T = Row>(a?: StructModel): T {
     let result: unknown = undefined;
     this.execWrap(() => {
-      const row = this.read("one") as Row;
+      const row = this.read("one");
       result = this.populateOne(row, a);
     });
     return result as T;
@@ -545,7 +545,7 @@ export class Query {
   async oneAsync<T = Row>(a?: StructModel): Promise<T> {
     let result: unknown = undefined;
     await this.execWrapAsync(async () => {
-      const row = (await this.readAsync("one")) as Row;
+      const row = await this.readAsync("one");
       result = this.populateOne(row, a);
     });
     return result as T;
@@ -570,7 +570,7 @@ export class Query {
     // oxlint-disable-next-line quality/no-known-value-widening -- the All hook may return any value (AllHookFunc returns unknown) and All returns it unchanged
     let result: unknown = [];
     this.execWrap(() => {
-      const rows = this.read("all") as Array<Row>;
+      const rows = this.read("all");
       result = this.populateAll(rows, factory);
     });
     return result as Array<T>;
@@ -581,7 +581,7 @@ export class Query {
     // oxlint-disable-next-line quality/no-known-value-widening -- the All hook may return any value (AllHookFunc returns unknown) and All returns it unchanged
     let result: unknown = [];
     await this.execWrapAsync(async () => {
-      const rows = (await this.readAsync("all")) as Array<Row>;
+      const rows = await this.readAsync("all");
       result = this.populateAll(rows, factory);
     });
     return result as Array<T>;
@@ -607,7 +607,7 @@ export class Query {
   row(): Array<unknown> {
     let result: Array<unknown> = [];
     this.execWrap(() => {
-      result = this.read("row") as Array<unknown>;
+      result = this.read("row");
     });
     return result;
   }
@@ -616,7 +616,7 @@ export class Query {
   async rowAsync(): Promise<Array<unknown>> {
     let result: Array<unknown> = [];
     await this.execWrapAsync(async () => {
-      result = (await this.readAsync("row")) as Array<unknown>;
+      result = await this.readAsync("row");
     });
     return result;
   }
@@ -625,7 +625,7 @@ export class Query {
   column<T = unknown>(): Array<T> {
     let result: Array<unknown> = [];
     this.execWrap(() => {
-      result = this.read("column") as Array<unknown>;
+      result = this.read("column");
     });
     return result as Array<T>;
   }
@@ -634,7 +634,7 @@ export class Query {
   async columnAsync<T = unknown>(): Promise<Array<T>> {
     let result: Array<unknown> = [];
     await this.execWrapAsync(async () => {
-      result = (await this.readAsync("column")) as Array<unknown>;
+      result = await this.readAsync("column");
     });
     return result as Array<T>;
   }
@@ -650,10 +650,18 @@ export class Query {
   // runs the query on this thread and reads its rows; a deadline that
   // passed while they were read fails the query (rows.ts), as an
   // interrupted one
+  private read(mode: "one"): Row;
+  private read(mode: "all"): Array<Row>;
+  private read(mode: "row" | "column"): Array<unknown>;
+  private read(mode: ReadMode): ReadValue;
   private read(mode: ReadMode): ReadValue {
     return readRows(this.rowsOp(false), mode);
   }
 
+  private readAsync(mode: "one"): Promise<Row>;
+  private readAsync(mode: "all"): Promise<Array<Row>>;
+  private readAsync(mode: "row" | "column"): Promise<Array<unknown>>;
+  private readAsync(mode: ReadMode): Promise<ReadValue>;
   private async readAsync(mode: ReadMode): Promise<ReadValue> {
     const reader = this.executor.reader;
     if (reader === undefined) {
