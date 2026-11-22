@@ -206,10 +206,9 @@ function caseRules(rc: RuleCase) {
   return { listRule, viewRule };
 }
 
-type ListQueryParams = { perPage: string; sort: string; filter?: string };
-
 function listQueryParams(rc: RuleCase) {
-  const params: ListQueryParams = { perPage: "200", sort: "id", ...rc.query };
+  // oxlint-disable-next-line quality/no-known-value-widening -- the spread of rc.query adds the case's own query keys (tag, level, status, empty, q, flag, ...), which are known only at run time from the case data; qs takes a string dictionary
+  const params: { [key: string]: string } = { perPage: "200", sort: "id", ...rc.query };
   if (rc.filter !== undefined) {
     params.filter = rc.filter;
   }
