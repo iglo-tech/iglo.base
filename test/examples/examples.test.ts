@@ -167,10 +167,6 @@ function sessionTokenOf(jar: CookieJar): string {
   return json.token;
 }
 
-/**
- * The scenario: sign-in, the protected page, revalidation after a password change, the renew
- * route, the CSRF rejection, sign-out, and the OAuth2 redirect flow.
- */
 type ExampleEnv = {
   PB_URL: string;
   PB_PUBLIC_URL: string;
@@ -179,6 +175,10 @@ type ExampleEnv = {
   PB_SUPERUSER_PASSWORD?: string;
 };
 
+/**
+ * The scenario: sign-in, the protected page, revalidation after a password change, the renew
+ * route, the CSRF rejection, sign-out, and the OAuth2 redirect flow.
+ */
 async function drive(app: RunningApp, pb: PocketBase, readable: boolean): Promise<void> {
   // signed out
   const jar = new CookieJar();

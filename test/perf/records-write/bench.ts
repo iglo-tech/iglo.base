@@ -133,9 +133,9 @@ async function build(dataDir: string, root: string): Promise<void> {
   }
 }
 
-// the author of note n: never in Team 3, so the relation rule passes
 type ApiHeaders = { "content-type": string; authorization?: string };
 
+// the author of note n: never in Team 3, so the relation rule passes
 function author(n: number): string {
   const m = n % 50;
   return id("m", m % 10 === 3 ? m + 1 : m);

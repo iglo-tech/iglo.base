@@ -23,16 +23,16 @@ import { defaultLayout, requireTool } from "@test/support/reference-tools";
 
 export const repoRoot = resolve(import.meta.dir, "../../..");
 
-// A temporary root under the ignored dist/spike-tmp directory.
-// TMPDIR points into it for this process and the servers it starts, so
-// spilled request bodies and builds land on disk and are removed with it.
-// The property form keeps cleanup a plain function, so it can be destructured.
 export interface SpikeRoot {
   root: string;
   tmp: string;
   cleanup: () => void;
 }
 
+// A temporary root under the ignored dist/spike-tmp directory.
+// TMPDIR points into it for this process and the servers it starts, so
+// spilled request bodies and builds land on disk and are removed with it.
+// The property form keeps cleanup a plain function, so it can be destructured.
 export function spikeRoot(name: string): SpikeRoot {
   const base = join(repoRoot, "dist", "spike-tmp");
   mkdirSync(base, { recursive: true });

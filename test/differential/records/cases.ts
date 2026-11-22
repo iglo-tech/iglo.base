@@ -226,8 +226,6 @@ function pick<T>(list: ReadonlyArray<T>, i: number, step = 1): T {
   return list[(i * step) % list.length] as T;
 }
 
-// the base records: field values cycle through the edge value lists, with
-// different strides, so that the 50 records combine them differently
 type BasePayloadJson = {
   title: string;
   num: string;
@@ -247,6 +245,8 @@ type BasePayloadJson = {
   team?: string;
 };
 
+// the base records: field values cycle through the edge value lists, with
+// different strides, so that the 50 records combine them differently
 export function allPayloads(userIds: ReadonlyArray<string>): Array<Payload> {
   const out: Array<Payload> = [];
   for (let i = 0; i < 50; i++) {

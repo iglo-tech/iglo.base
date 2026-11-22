@@ -255,9 +255,6 @@ describe("auth methods defaults", () => {
   );
 });
 
-// Apple's client secret: upstream and iglo.base sign with the same key, the
-// secrets verify with its public key, and the header and claims agree with
-// upstream (the times aside)
 interface DecodedJwt {
   header: JsonObject;
   claims: JsonObject;
@@ -266,6 +263,9 @@ interface DecodedJwt {
   raw: { header: string; claims: string };
 }
 
+// Apple's client secret: upstream and iglo.base sign with the same key, the
+// secrets verify with its public key, and the header and claims agree with
+// upstream (the times aside)
 function decodeJWT(token: string): DecodedJwt {
   const [h = "", c = "", s = ""] = token.split(".");
   return {

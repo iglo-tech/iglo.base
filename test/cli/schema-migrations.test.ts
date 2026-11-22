@@ -47,13 +47,13 @@ function writeMigration(site: Site, file: string, source: string): void {
   writeFileSync(join(site.migrationsDir, file), source);
 }
 
+// a row of a table: SQLite returns these column values
+type SqlRow = { [column: string]: string | number | bigint | Uint8Array | null };
+
 // The content of the databases: every table's rows, read back. A failed apply
 // must leave the content as it was. (The bytes of the file are not compared:
 // SQLite rewrites pages on a rolled-back write, so the file can differ while
 // no row does.)
-// a row of a table: SQLite returns these column values
-type SqlRow = { [column: string]: string | number | bigint | Uint8Array | null };
-
 function digests(dataDir: string) {
   const result: Record<string, string> = {};
   for (const name of ["data.db", "auxiliary.db"]) {
