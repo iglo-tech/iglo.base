@@ -110,7 +110,7 @@ export class GeoPoint implements JSONMarshaler {
   }
 
   private unmarshal(data: string | Uint8Array): void {
-    unmarshalStruct<GeoPoint>(
+    unmarshalStruct(
       data,
       {
         lon: (v) => {

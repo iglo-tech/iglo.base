@@ -367,7 +367,7 @@ export class PasswordField
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<PasswordField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

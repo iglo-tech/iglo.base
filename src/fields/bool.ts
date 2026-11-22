@@ -145,7 +145,7 @@ export class BoolField implements Field {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<BoolField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

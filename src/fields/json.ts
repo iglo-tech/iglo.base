@@ -251,7 +251,7 @@ export class JSONField implements Field, MaxBodySizeCalculator {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<JSONField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

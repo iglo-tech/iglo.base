@@ -280,7 +280,7 @@ export class NumberField implements Field, SetterFinder {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<NumberField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

@@ -203,7 +203,7 @@ export class URLField implements Field {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<URLField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

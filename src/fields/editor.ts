@@ -196,7 +196,7 @@ export class EditorField implements Field, MaxBodySizeCalculator {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<EditorField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

@@ -417,7 +417,7 @@ export class RelationField implements Field, MultiValuer, DriverValuer, SetterFi
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<RelationField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

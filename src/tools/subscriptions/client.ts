@@ -117,7 +117,7 @@ export class Client {
       const raw = optionsQueryValue(s);
       if (raw !== "") {
         try {
-          unmarshalStruct<{ query?: GoMap; headers?: GoMap }>(
+          unmarshalStruct(
             raw,
             {
               query: (v) => (rawQuery = v),

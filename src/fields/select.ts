@@ -312,7 +312,7 @@ export class SelectField implements Field, MultiValuer, DriverValuer, SetterFind
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<SelectField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

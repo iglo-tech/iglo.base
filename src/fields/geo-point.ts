@@ -182,7 +182,7 @@ export class GeoPointField implements Field {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<GeoPointField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

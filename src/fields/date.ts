@@ -202,7 +202,7 @@ export class DateField implements Field {
 
   // json.Unmarshal (DateTime.UnmarshalJSON: a JSON string, scanned)
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<DateField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

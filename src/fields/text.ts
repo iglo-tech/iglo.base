@@ -529,7 +529,7 @@ export class TextField implements Field, SetterFinder, RecordInterceptor {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<TextField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

@@ -199,7 +199,7 @@ export class EmailField implements Field {
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<EmailField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),

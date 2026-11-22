@@ -1019,7 +1019,7 @@ export class FileField
 
   // json.Unmarshal
   unmarshalJSON(data: string | Uint8Array): void {
-    unmarshalStruct<FileField>(
+    unmarshalStruct(
       data,
       {
         name: (v) => (this.name = v),
